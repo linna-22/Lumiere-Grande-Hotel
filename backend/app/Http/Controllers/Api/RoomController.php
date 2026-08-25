@@ -28,15 +28,17 @@ class RoomController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+
     public function store(StoreRoomRequest $request): JsonResponse
     {
         $data = $request->validated();
 
         if($request->hasFile('image')){
 
-        $uploadedFile = $request->file('image')->storeOnCloundinary('hotel/rooms');
+        $uploadedFile = $request->file('image')->storeOnCloudinary('hotel/rooms');
         $data['image_url'] = $uploadedFile->getSecurePath();
         $data['cloudinary_id'] = $uploadedFile->getPublicId();
+
         }
 
         $room = Rooms::create($data);
@@ -64,7 +66,7 @@ class RoomController extends Controller
     {
         $data = $request->validated();
 
-        if($request->hash_file('image')){
+        if($request->hasfile('image')){
 
         if($room->cloudinary_id) {
 

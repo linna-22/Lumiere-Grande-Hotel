@@ -24,11 +24,11 @@ class StoreRoomRequest extends FormRequest
         return [
             
         'room_number' => 'required|string|max:50|unique:rooms,room_number',
-        'room_type_id' => 'required|exist:room_types,id',
+        'room_type_id' => 'required|exists:room_types,id',
         'floor' => 'nullable|integer',
         'status' => 'required|string|in:available,occupied,dirty,maintenance',
         'description' => 'nullable|string',
-        'image' => 'nullable|image|mines:jpeg,png,jpg,webp|max:2048'
+        'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048'
         ];
     }
 }

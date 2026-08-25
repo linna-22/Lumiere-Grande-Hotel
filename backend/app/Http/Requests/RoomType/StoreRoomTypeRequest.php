@@ -23,11 +23,11 @@ class StoreRoomTypeRequest extends FormRequest
     {
         return [
            
-        'name' => 'required | string | max:255',
+        'name' => 'required|string|max:255',
         'description' => 'nullable|string',
-        'capacity' => 'required|integer|min1',
+        'capacity' => 'required|integer|min:1',
         'base_price'=>'required|numeric|min:0',
-        'max_occupancy'=> 'required|integer|min1',
+        'max_occupancy'=> 'required|integer|min:1',
         'status'=>'required|string|in:active,inactive',
         'facility_ids'=>'nullable|array',
         'facility_ids.*'=>'exists:facilities,id'

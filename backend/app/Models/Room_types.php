@@ -22,12 +22,12 @@ class Room_types extends Model
 
     public function rooms(): HasMany {
 
-    return $this->hasMany(Rooms::class);
+    return $this->hasMany(Rooms::class, 'room_type_id');
     }
 
     public function facilities(): BelongsToMany {
 
-    return $this->belongsToMany(Facility::class, 'room_type_facilities');
+    return $this->belongsToMany(Facility::class, 'room_type_facilities', 'room_type_id', 'facility_id');
     
     }
 }

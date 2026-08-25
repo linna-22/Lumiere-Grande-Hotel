@@ -16,12 +16,15 @@ class Rooms extends Model
         'room_type_id',
         'floor',
         'status',
-        'description'
+        'description',
+        'image_url',
+        'cloudinary_id'
     ];
 
     public function roomType(): BelongsTo {
 
-        return $this->belongsTo(Room_types::class);
+        return $this->belongsTo(Room_types::class, 'room_type_id');
+
     }
 
     public function reservationRooms(): HasMany {
