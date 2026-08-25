@@ -32,7 +32,9 @@ class RoomsFactory extends Factory
 
         'room_number' => (string) $this->faker->unique()->numberBetween(105, 125),
         'room_type_id' => Room_types::inRandomOrder()->first()?->id?? Room_types::factory(),
+        'floor' => $this->faker->numberBetween(1, 50),
         'status' => $this->faker->randomElement(['available', 'occupied', 'dirty', 'maintenance']) ,
+        'description' => $this->faker->text(),
         'image_url' => $this->faker->randomElement($testingData),
         'cloudinary_id' => null,
         
