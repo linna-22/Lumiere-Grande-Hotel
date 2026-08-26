@@ -8,7 +8,7 @@ export default function Dashboard({ onNavigate }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex bg-base-950 min-h-screen">
+    <div className="flex bg-base-850 min-h-screen">
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

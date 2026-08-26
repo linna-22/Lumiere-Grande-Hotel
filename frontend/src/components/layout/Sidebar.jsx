@@ -54,7 +54,7 @@ export default function Sidebar({ open, onClose, active = 'Dashboard', onNavigat
       {/* Mobile/tablet overlay */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 bg-black/60 z-30 lg:hidden transition-opacity ${
+        className={`fixed inset-0 bg-[#050d1b] z-30 lg:hidden transition-opacity ${
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       />
@@ -77,9 +77,9 @@ export default function Sidebar({ open, onClose, active = 'Dashboard', onNavigat
             {!collapsed && (
               <div className="leading-tight min-w-0">
                 <p className="text-white font-bold text-[15px] tracking-tight truncate">
-                  Hotel Dasmariñas
+                  LUMIÈRE GRAND
                 </p>
-                <p className="text-amber-400 text-[11px] font-medium">Management System</p>
+                <p className="text-amber-400 text-[11px] font-medium">Horel Management System</p>
               </div>
             )}
           </div>

@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
-import { rooms } from './roomsData'
 
 const statusStyles = {
   Available: 'bg-emerald-500/15 text-emerald-400',
@@ -11,14 +10,14 @@ const statusStyles = {
 }
 
 function formatPrice(n) {
-  return `₱${n.toLocaleString('en-US')}`
+  return `$${n.toLocaleString('en-US')}`
 }
 
-export default function RoomsList({ activeTab = 'All' }) {
+export default function RoomsList({ rooms = [], activeTab = 'All' }) {
   const filtered = useMemo(() => {
     if (activeTab === 'All') return rooms
     return rooms.filter((r) => r.status === activeTab)
-  }, [activeTab])
+  }, [rooms, activeTab])
 
   return (
     <div className="bg-base-850 border border-base-border rounded-xl mt-6 overflow-hidden">
@@ -38,7 +37,7 @@ export default function RoomsList({ activeTab = 'All' }) {
           <tbody>
             {filtered.map((room) => (
               <tr
-                key={room.number}
+                key={room.id}
                 className="border-b border-base-border last:border-b-0 hover:bg-base-800/50 transition-colors"
               >
                 <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">

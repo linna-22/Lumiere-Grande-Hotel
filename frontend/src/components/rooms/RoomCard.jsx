@@ -1,25 +1,25 @@
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from "lucide-react";
 
 const statusStyles = {
-  Available: 'bg-emerald-500/90 text-white',
-  Occupied: 'bg-sky-500/90 text-white',
-  Reserved: 'bg-violet-500/90 text-white',
-  Cleaning: 'bg-amber-500/90 text-base-950',
-  Maintenance: 'bg-rose-500/90 text-white',
-}
+  Available: "bg-emerald-500/90 text-white",
+  Occupied: "bg-sky-500/90 text-white",
+  Reserved: "bg-violet-500/90 text-white",
+  Cleaning: "bg-amber-500/90 text-base-950",
+  Maintenance: "bg-rose-500/90 text-white",
+};
 
 function formatPrice(n) {
-  return `₱${n.toLocaleString('en-US')}`
+  return `$${n.toLocaleString("en-US")}`;
 }
 
 export default function RoomCard({ room }) {
   return (
-    <div className="bg-base-850 border border-base-border rounded-xl overflow-hidden flex flex-col">
-      <div className="relative h-44 sm:h-48">
+    <div className="bg-base-850 border border-base-border rounded-xl overflow-hidden flex flex-col group transition-colors duration-200 hover:border-white/45">
+      <div className="relative h-44 sm:h-48 overflow-hidden">
         <img
           src={room.image}
           alt={`Room ${room.number}`}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
@@ -39,10 +39,14 @@ export default function RoomCard({ room }) {
         <p className="text-slate-400 text-sm mt-0.5">
           {room.type} · Floor {room.floor} · {room.guests} guests
         </p>
-        <p className="text-slate-400 text-sm mt-2">{room.description}</p>
+        <p className="text-slate-400 text-sm mt-2">
+          {(room.description || "").length > 30
+            ? `${room.description.slice(0, 30)}...`
+            : room.description}
+        </p>
 
         <div className="flex flex-wrap gap-1.5 mt-3">
-          {room.amenities.map((a) => (
+          {(room.amenities || []).map((a) => (
             <span
               key={a}
               className="text-xs text-slate-300 bg-base-800 border border-base-border px-2 py-1 rounded-md"
@@ -64,5 +68,5 @@ export default function RoomCard({ room }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
