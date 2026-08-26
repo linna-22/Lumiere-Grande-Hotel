@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Room\IndexRoomRequest;
 use App\Http\Requests\Room\StoreRoomRequest;
 use App\Http\Requests\Room\UpdateRoomRequest;
 use App\Http\Resources\RoomResource;
@@ -10,18 +11,44 @@ use App\Models\Rooms;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary; 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RoomController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(IndexRoomRequest $request) :JsonResponse
     {
-        
-    $rooms = Rooms::with('roomType.facilities')->latest()->get();
 
-    return RoomResource::collection($rooms);
+    $filter = $request->validated();
+
+    $count = Rooms::select('status', DB::raw('count(*) as count')) -> groupBy('status')->pluck('count', 'status')->toArray();
+
+    $summary = [
+        'total' => Rooms::count(),
+        'available' => $count['available'] ?? 0,
+        'occupaid' => $count['occupaid'] ?? 0,
+        'reserved' => $count['reserved'] ?? 0,
+        'cleaning' => $count['cleaning'] ?? $count['dirty'] ??0,
+        'maintenance' => $count['maintenance'] ?? 0
+    ];
+
+    $room = Rooms::with('roomType.facilities')->filter($filter)->paginate($filter['per_page'] ?? 8);
+    
+    return response()->json([
+        'summary' => $summary,
+        'data' => RoomResource::collection($room)->response()->getData()->data,
+        'meta' => [
+            'curren_page' => $room->currentPage(),
+            'last_page' => $room->lastPage(),
+            'per_page' => $room->perPage(),
+            'total' => $room->total()
+        ]
+    ]);
+    // $rooms = Rooms::with('roomType.facilities')->latest()->get();
+
+    // return RoomResource::collection($rooms);
 
     }
 

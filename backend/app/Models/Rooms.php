@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder;
 
 class Rooms extends Model
 {
@@ -37,5 +38,36 @@ class Rooms extends Model
 
     return $this->hasMany(Housekeeping_tasks::class);
     
+    }
+
+    // ================Search filter pagination block===========
+
+    public function scopeFilter(Builder $query, array $filter): Builder {
+
+    $query->when($filter['search'] ?? null, function($q, $search) {
+        $q->where('room_number', 'Like', '%' .$search . '%');
+    });
+    
+    $query->when($filter['status'] ?? null, function ($q, $status) {
+
+    if($status !== 'all'){
+
+    $q->where('status', strtolower($status));
+
+    }
+
+    });
+
+    $query->when($filter['room_type_id'] ?? null, function ($q, $typeId) {
+
+    $q->where('room_type_id', $typeId);
+
+    });
+
+    $sort = $filter['sort'] ?? 'asc';
+    
+    $query->orderBy('room_number', $sort);
+
+    return $query;
     }
 }

@@ -18,12 +18,14 @@ class RoomResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'room_number' => $this->room_number,
+            'room_number' => 'Floor' .substr($this->room_number, 0,1),
             'floor' => $this->floor,
             'status' => $this->status,
-            'description' => $this->description,
+            'description' => $this->description ?? 'No description avialable',
             'image_url' => $this->image_url,
             'room_type' => new RoomTypeResource($this->whenLoaded('roomType')),
+            'capacity' => ($this-> roomType?->capacity ?? 2). 'guests',
+            'amenities' => $this->roomType?->amenities??['Wifi', 'Ac', 'Tv'],
             'created_at' => $this->created_at->toIso8601String(),
         ];
     }
