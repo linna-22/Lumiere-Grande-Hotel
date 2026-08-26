@@ -34,7 +34,7 @@ class RoomsFactory extends Factory
         'room_type_id' => Room_types::inRandomOrder()->first()?->id?? Room_types::factory(),
         'floor' => $this->faker->numberBetween(1, 50),
         'status' => $this->faker->randomElement(['available', 'occupied', 'dirty', 'maintenance']) ,
-        'description' => $this->faker->text(),
+        'description' => $this->faker->sentence(5),
         'image_url' => $this->faker->randomElement($testingData),
         'cloudinary_id' => null,
         
