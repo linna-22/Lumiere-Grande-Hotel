@@ -15,38 +15,51 @@ Then open the printed local URL (usually http://localhost:5173).
 
 ```
 src/
-  App.jsx                        # entry point — renders the current page
-                                  #   (swap in a router here later)
+  App.jsx                        # lightweight page switcher (Dashboard /
+                                  #   Reservations / Rooms) — swap for a real
+                                  #   router later
   pages/
-    dashboard/
-      Dashboard.jsx               # dashboard page: composes the components
-                                   #   below into the full layout
+    dashboard/Dashboard.jsx       # dashboard page
+    reservations/Reservations.jsx # reservations page
+    rooms/Rooms.jsx                # rooms page
   components/
+    layout/
+      Sidebar.jsx                  # shared grouped nav (Main / Operations /
+                                    #   Amenities), badges, collapse toggle
+      TopBar.jsx                    # shared header: date/weather, search,
+                                     #   New Reservation, notifications, user
     dashboard/
-      Sidebar.jsx                  # left nav (Dashboard, Reservations, Rooms,
-                                    #   Guests, Check it, Checkout, Payment,
-                                    #   Invoice, Employee, Setting, Logout)
-      TopBar.jsx                    # date/weather, search, New Reservation,
-                                     #   user menu
       Hero.jsx                       # hotel banner with quick-action buttons
       StatsGrid.jsx                  # 8 metric cards
+    reservations/
+      PageHeader.jsx                  # title + Export/Print/New Reservation
+      StatsCards.jsx                  # 5 summary cards
+      FilterTabs.jsx                   # All/Active/Checked In/Out/Cancelled
+      ReservationsTable.jsx             # searchable, filterable table
+      reservationsData.js                # sample reservation records
+    rooms/
+      PageHeader.jsx                  # title + Export/Print/view toggle/Add
+      StatsCards.jsx                  # 6 summary cards
+      FilterTabs.jsx                   # All/Available/Occupied/... filters
+      RoomCard.jsx                     # single room card (grid view)
+      RoomsGrid.jsx                     # grid of RoomCards
+      RoomsList.jsx                      # compact table (list view)
+      roomsData.js                        # sample room records
 ```
 
-Everything dashboard-specific lives under a `dashboard` folder in both
-`components/` and `pages/`, so the upcoming public-facing website and online
-booking flow can sit alongside it as their own `components/site/` (or
-similar) and `pages/site/` (or similar) folders without clashing — e.g.:
+`Sidebar` and `TopBar` are shared across every page under `components/layout/`.
+Each feature area (dashboard, reservations, rooms) gets its own folder under
+both `components/` and `pages/`, so the upcoming public-facing website and
+online booking flow can be added the same way — e.g. `components/site/` and
+`pages/site/` — without touching the admin pages.
 
-```
-src/
-  pages/
-    dashboard/Dashboard.jsx
-    site/Home.jsx            # (future) public homepage
-    site/Booking.jsx         # (future) online booking flow
-  components/
-    dashboard/...
-    site/...                 # (future) shared site components
-```
+### Navigating between pages
+
+`App.jsx` currently swaps pages by label via the sidebar's `onNavigate`
+callback (no routing library yet). Clicking "Dashboard", "Reservations", or
+"Rooms" in the sidebar switches the page; other sidebar items are placeholders
+until their pages are built. Swap this for `react-router-dom` whenever you're
+ready for real URLs.
 
 ## Responsive behavior
 
