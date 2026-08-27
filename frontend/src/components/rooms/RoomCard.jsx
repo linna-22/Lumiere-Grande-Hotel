@@ -3,8 +3,7 @@ import { Pencil, Trash2 } from "lucide-react";
 const statusStyles = {
   Available: "bg-emerald-500/90 text-white",
   Occupied: "bg-sky-500/90 text-white",
-  Reserved: "bg-violet-500/90 text-white",
-  Cleaning: "bg-amber-500/90 text-base-950",
+  Dirty: "bg-amber-500/90 text-base-950",
   Maintenance: "bg-rose-500/90 text-white",
 };
 
@@ -12,7 +11,7 @@ function formatPrice(n) {
   return `$${n.toLocaleString("en-US")}`;
 }
 
-export default function RoomCard({ room, onEdit }) {
+export default function RoomCard({ room, onEdit, onDelete }) {
   return (
     <div className="bg-base-850 border border-base-border rounded-xl overflow-hidden flex flex-col group transition-colors duration-200 hover:border-white/45">
       <div className="relative h-44 sm:h-48 overflow-hidden">
@@ -64,7 +63,10 @@ export default function RoomCard({ room, onEdit }) {
             <Pencil size={14} />
             Edit
           </button>
-          <button className="flex items-center justify-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          <button
+            onClick={() => onDelete?.(room)}
+            className="flex items-center justify-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
             <Trash2 size={14} />
             Del
           </button>

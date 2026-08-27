@@ -10,6 +10,8 @@ import Pagination from "../../components/rooms/Pagination";
 import { useRooms } from "../../hooks/useRooms";
 import RoomFormModal from "../../components/rooms/RoomFormModal";
 import SuccessModal from "../../components/rooms/SuccessModal";
+import ConfirmDeleteModal from "../../components/rooms/ConfirmDeleteModal";
+import { apiFetch } from "../../api/client";
 
 export default function Rooms({ onNavigate }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,12 +21,32 @@ export default function Rooms({ onNavigate }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [deletingRoom, setDeletingRoom] = useState(null);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   const { rooms, summary, meta, loading, error, refetch } = useRooms({
     activeTab,
     page,
     perPage: 8,
   });
+  const handleDeleteClick = (room) => {
+    setDeletingRoom(room);
+  };
+
+  const handleConfirmDelete = async () => {
+  if (!deletingRoom) return;
+  setDeleteInProgress(true);
+  try {
+    const result = await apiFetch(`/rooms/${deletingRoom.id}`, { method: "DELETE" });
+    setDeletingRoom(null);
+    refetch();
+    setSuccessMessage("Room deleted successfully.");
+  } catch (err) {
+    alert(`Failed to delete room: ${err.message}`);
+  } finally {
+    setDeleteInProgress(false);
+  }
+};
   const handleModalSuccess = (action) => {
     refetch();
     setSuccessMessage(
@@ -55,7 +77,7 @@ export default function Rooms({ onNavigate }) {
   };
 
   return (
-    <div className="flex bg-base-950 min-h-screen">
+    <div className="flex bg-[#081325] min-h-screen">
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -91,9 +113,17 @@ export default function Rooms({ onNavigate }) {
           {!loading && !error && (
             <>
               {view === "grid" ? (
-                <RoomsGrid rooms={rooms} onEdit={handleEditClick} />
+                <RoomsGrid
+                  rooms={rooms}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteClick}
+                />
               ) : (
-                <RoomsList rooms={rooms} onEdit={handleEditClick} />
+                <RoomsList
+                  rooms={rooms}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteClick}
+                />
               )}
               <Pagination
                 currentPage={page}
@@ -118,7 +148,14 @@ export default function Rooms({ onNavigate }) {
           onSuccess={handleModalSuccess}
         />
       )}
-
+      {deletingRoom && (
+        <ConfirmDeleteModal
+          room={deletingRoom}
+          deleting={deleteInProgress}
+          onCancel={() => setDeletingRoom(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
       {successMessage && (
         <SuccessModal
           message={successMessage}

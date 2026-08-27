@@ -3,8 +3,7 @@ import { Pencil, Trash2 } from "lucide-react";
 const statusStyles = {
   Available: "bg-emerald-500/15 text-emerald-400",
   Occupied: "bg-sky-500/15 text-sky-400",
-  Reserved: "bg-violet-500/15 text-violet-400",
-  Cleaning: "bg-amber-500/15 text-amber-400",
+  Dirty: "bg-amber-500/15 text-amber-400",
   Maintenance: "bg-rose-500/15 text-rose-400",
 };
 
@@ -12,7 +11,7 @@ function formatPrice(n) {
   return `$${n.toLocaleString("en-US")}`;
 }
 
-export default function RoomsList({ rooms = [], onEdit }) {
+export default function RoomsList({ rooms = [], onEdit, onDelete }) {
   return (
     <div className="bg-base-850 border border-base-border rounded-xl mt-6 overflow-hidden">
       <div className="overflow-x-auto">
@@ -35,7 +34,7 @@ export default function RoomsList({ rooms = [], onEdit }) {
                 className="border-b border-base-border last:border-b-0 hover:bg-base-800/50 transition-colors"
               >
                 <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">
-                  Room {room.number}
+                  Room {room.room_number}
                 </td>
                 <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
                   {room.type}
@@ -65,7 +64,10 @@ export default function RoomsList({ rooms = [], onEdit }) {
                       <Pencil size={12} />
                       Edit
                     </button>
-                    <button className="flex items-center gap-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors">
+                    <button
+                      onClick={() => onDelete?.(room)}
+                      className="flex items-center gap-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors"
+                    >
                       <Trash2 size={12} />
                       Del
                     </button>
