@@ -6,8 +6,7 @@ import { useRoomTypes } from "../../hooks/useRoomTypes";
 const STATUS_OPTIONS = [
   "available",
   "occupied",
-  "reserved",
-  "cleaning",
+  "dirty",
   "maintenance",
 ];
 
@@ -35,9 +34,9 @@ export default function RoomFormModal({ room, onClose, onSuccess }) {
   useEffect(() => {
     if (room) {
       setForm({
-        room_number: room.number ?? room.room_number ?? "",
+        room_number: room.number ?? room.room_number ?? "", 
         floor: room.floor ?? "",
-        room_type_id: room.room_type_id ?? room.roomType?.id ?? "",
+        room_type_id: room.room_type_id ?? "",
         status: (room.status || "available").toLowerCase(),
         description: room.description ?? "",
         image_url: room.image_url ?? room.image ?? "",
@@ -86,6 +85,7 @@ export default function RoomFormModal({ room, onClose, onSuccess }) {
       onSuccess?.(isEditMode ? "update" : "create");
       onClose();
     } catch (err) {
+        console.log('Update error:', err.status, err.data)
       if (err.status === 422 && err.data?.errors) {
         setErrors(err.data.errors);
       } else {

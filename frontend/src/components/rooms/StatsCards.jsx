@@ -3,13 +3,13 @@ export default function StatsCards({ summary }) {
     { value: summary?.total ?? 0, label: 'Total', color: 'text-amber-400' },
     { value: summary?.available ?? 0, label: 'Available', color: 'text-emerald-400' },
     { value: summary?.occupied ?? 0, label: 'Occupied', color: 'text-sky-400' },
-    { value: summary?.reserved ?? 0, label: 'Reserved', color: 'text-violet-400' },
-    { value: summary?.cleaning ?? 0, label: 'Cleaning', color: 'text-amber-400' },
+    // { value: summary?.dirty ?? 0, label: 'Dirty', color: 'text-amber-400' },
+    { value: summary?.cleaning ?? summary?.dirty ?? 0, label: 'Dirty', color: 'text-amber-400' },
     { value: summary?.maintenance ?? 0, label: 'Maintenance', color: 'text-rose-400' },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-6">
       {stats.map(({ value, label, color }) => (
         <div
           key={label}
