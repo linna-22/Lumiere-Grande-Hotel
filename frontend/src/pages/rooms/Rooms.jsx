@@ -8,18 +8,41 @@ import RoomsGrid from "../../components/rooms/RoomsGrid";
 import RoomsList from "../../components/rooms/RoomsList";
 import Pagination from "../../components/rooms/Pagination";
 import { useRooms } from "../../hooks/useRooms";
+import RoomFormModal from "../../components/rooms/RoomFormModal";
+import SuccessModal from "../../components/rooms/SuccessModal";
 
 export default function Rooms({ onNavigate }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
   const [view, setView] = useState("grid");
   const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const { rooms, summary, meta, loading, error, refetch } = useRooms({
     activeTab,
     page,
     perPage: 8,
   });
+  const handleModalSuccess = (action) => {
+    refetch();
+    setSuccessMessage(
+      action === "update"
+        ? "Room updated successfully."
+        : "Room added successfully.",
+    );
+  };
+
+  const handleAddClick = () => {
+    setEditingRoom(null);
+    setModalOpen(true);
+  };
+
+  const handleEditClick = (room) => {
+    setEditingRoom(room);
+    setModalOpen(true);
+  };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -42,7 +65,11 @@ export default function Rooms({ onNavigate }) {
       <div className="flex-1 min-w-0">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
         <main className="p-4 sm:p-6 max-w-[1400px] mx-auto">
-          <PageHeader view={view} onViewChange={setView} />
+          <PageHeader
+            view={view}
+            onViewChange={setView}
+            onAddRoom={handleAddClick}
+          />
           <StatsCards summary={summary} />
           <FilterTabs onChange={handleTabChange} />
 
@@ -64,9 +91,9 @@ export default function Rooms({ onNavigate }) {
           {!loading && !error && (
             <>
               {view === "grid" ? (
-                <RoomsGrid rooms={rooms} />
+                <RoomsGrid rooms={rooms} onEdit={handleEditClick} />
               ) : (
-                <RoomsList rooms={rooms} />
+                <RoomsList rooms={rooms} onEdit={handleEditClick} />
               )}
               <Pagination
                 currentPage={page}
@@ -77,6 +104,27 @@ export default function Rooms({ onNavigate }) {
           )}
         </main>
       </div>
+      {modalOpen && (
+        <RoomFormModal
+          room={editingRoom}
+          onClose={() => setModalOpen(false)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
+      {modalOpen && (
+        <RoomFormModal
+          room={editingRoom}
+          onClose={() => setModalOpen(false)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
+
+      {successMessage && (
+        <SuccessModal
+          message={successMessage}
+          onClose={() => setSuccessMessage(null)}
+        />
+      )}
     </div>
   );
 }

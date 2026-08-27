@@ -1,6 +1,6 @@
 import { FileDown, FileSpreadsheet, Printer, Plus, LayoutGrid, List } from 'lucide-react'
 
-export default function PageHeader({ view, onViewChange }) {
+export default function PageHeader({ view, onViewChange, onAddRoom }) {
   return (
     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
       <div>
@@ -49,7 +49,10 @@ export default function PageHeader({ view, onViewChange }) {
           </button>
         </div>
 
-        <button className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold text-sm px-3.5 py-2 rounded-lg transition-colors">
+        <button
+          onClick={() => onAddRoom?.()}
+          className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold text-sm px-3.5 py-2 rounded-lg transition-colors"
+        >
           <Plus size={16} strokeWidth={2.5} />
           Add Room
         </button>

@@ -12,7 +12,7 @@ function formatPrice(n) {
   return `$${n.toLocaleString("en-US")}`;
 }
 
-export default function RoomsList({ rooms = [] }) {
+export default function RoomsList({ rooms = [], onEdit }) {
   return (
     <div className="bg-base-850 border border-base-border rounded-xl mt-6 overflow-hidden">
       <div className="overflow-x-auto">
@@ -58,7 +58,10 @@ export default function RoomsList({ rooms = [] }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                    <button className="flex items-center gap-1 bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors">
+                    <button
+                      onClick={() => onEdit?.(room)}
+                      className="flex items-center gap-1 bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors"
+                    >
                       <Pencil size={12} />
                       Edit
                     </button>

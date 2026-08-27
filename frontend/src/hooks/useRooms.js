@@ -15,6 +15,7 @@ function normalizeRoom(apiRoom) {
   return {
     id: apiRoom.id,
     number: apiRoom.room_number,
+    room_type_id: apiRoom.room_type_id ?? type.id ?? '',
     type: type.name || 'Unknown',
     floor: apiRoom.floor,
     guests: type.max_occupancy ?? type.capacity ?? '-',

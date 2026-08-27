@@ -12,7 +12,7 @@ function formatPrice(n) {
   return `$${n.toLocaleString("en-US")}`;
 }
 
-export default function RoomCard({ room }) {
+export default function RoomCard({ room, onEdit }) {
   return (
     <div className="bg-base-850 border border-base-border rounded-xl overflow-hidden flex flex-col group transition-colors duration-200 hover:border-white/45">
       <div className="relative h-44 sm:h-48 overflow-hidden">
@@ -57,7 +57,10 @@ export default function RoomCard({ room }) {
         </div>
 
         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-base-border">
-          <button className="flex-1 flex items-center justify-center gap-1.5 bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 text-sm font-medium py-2 rounded-lg transition-colors">
+          <button
+            onClick={() => onEdit?.(room)}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 text-sm font-medium py-2 rounded-lg transition-colors"
+          >
             <Pencil size={14} />
             Edit
           </button>
