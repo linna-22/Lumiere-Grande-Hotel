@@ -28,7 +28,7 @@ class RoomController extends Controller
     $summary = [
         'total' => Rooms::count(),
         'available' => $count['available'] ?? 0,
-        'occupaid' => $count['occupaid'] ?? 0,
+        'occupied' => $count['occupied'] ?? 0,
         'reserved' => $count['reserved'] ?? 0,
         'cleaning' => $count['cleaning'] ?? $count['dirty'] ??0,
         'maintenance' => $count['maintenance'] ?? 0
@@ -102,15 +102,20 @@ class RoomController extends Controller
         }
 
         $uploadedFile = $request->file('image')->storeOnCloudinary('hotel/rooms');
+        
         $data['image_url'] = $uploadedFile->getSecurePath();
+
         $data['cloudinary_id'] = $uploadedFile->getPublicId();
+
         }
 
         $room->update($data);
 
         return response()->json([
+
             'message' => 'Room updated successfully',
             'data' => new RoomResource($room->load('roomType.facilities'))
+
         ], 200);
     }
 
