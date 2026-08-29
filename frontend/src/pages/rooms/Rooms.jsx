@@ -11,9 +11,9 @@ import Pagination from "../../components/common/Pagination";
 import { useRooms } from "../../hooks/useRooms";
 import RoomFormModal from "../../components/rooms/RoomFormModal";
 import SuccessModal from "../../components/rooms/SuccessModal";
-import ConfirmDeleteModal from "../../components/rooms/ConfirmDeleteModal";
 import { apiFetch } from "../../api/client";
-import Loading from '../../components/common/Loading'
+import Loading from "../../components/common/Loading";
+import ConfirmDeleteModal from "../../components/common/ConfirmDeleteModal";
 
 export default function Rooms({ onNavigate }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,19 +36,21 @@ export default function Rooms({ onNavigate }) {
   };
 
   const handleConfirmDelete = async () => {
-  if (!deletingRoom) return;
-  setDeleteInProgress(true);
-  try {
-    const result = await apiFetch(`/rooms/${deletingRoom.id}`, { method: "DELETE" });
-    setDeletingRoom(null);
-    refetch();
-    setSuccessMessage("Room deleted successfully.");
-  } catch (err) {
-    alert(`Failed to delete room: ${err.message}`);
-  } finally {
-    setDeleteInProgress(false);
-  }
-};
+    if (!deletingRoom) return;
+    setDeleteInProgress(true);
+    try {
+      const result = await apiFetch(`/rooms/${deletingRoom.id}`, {
+        method: "DELETE",
+      });
+      setDeletingRoom(null);
+      refetch();
+      setSuccessMessage("Room deleted successfully.");
+    } catch (err) {
+      alert(`Failed to delete room: ${err.message}`);
+    } finally {
+      setDeleteInProgress(false);
+    }
+  };
   const handleModalSuccess = (action) => {
     refetch();
     setSuccessMessage(
@@ -123,7 +125,12 @@ export default function Rooms({ onNavigate }) {
                   onDelete={handleDeleteClick}
                 />
               )}
-              <Pagination currentPage={page} meta={meta} onPageChange={setPage} itemLabel="rooms" />
+              <Pagination
+                currentPage={page}
+                meta={meta}
+                onPageChange={setPage}
+                itemLabel="rooms"
+              />
             </>
           )}
         </main>
@@ -144,7 +151,8 @@ export default function Rooms({ onNavigate }) {
       )}
       {deletingRoom && (
         <ConfirmDeleteModal
-          room={deletingRoom}
+          itemLabel="Room"
+          itemName={deletingRoom.number}
           deleting={deleteInProgress}
           onCancel={() => setDeletingRoom(null)}
           onConfirm={handleConfirmDelete}
