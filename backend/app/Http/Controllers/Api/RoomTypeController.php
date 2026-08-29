@@ -31,20 +31,20 @@ class RoomTypeController extends Controller
 
         ];
 
-        $roomTypes = Room_types::with('facilities')->filter($filter)->paginate($filter['per_page'] ?? 8);
+        $roomTypes = Room_types::with('facilities')-> filter($filter)->paginate($filter['per_page'] ?? 8);
 
         return response() -> json([
 
             'summary' => $summary,
-            'data' => RoomTypeResource::collection($roomTypes)->response()->getData()->data,
+            'data' => RoomTypeResource::collection($roomTypes) ,
             'meta' => [
-            'curren_page' => $roomTypes->currentPage(),
+            'current_page' => $roomTypes->currentPage(),
             'last_page' => $roomTypes->lastPage(),
             'per_page' => $roomTypes->perPage(),
             'total' => $roomTypes->total()
         ]
 
-        ]);
+        ], 200);
 
         // $roomTypes = Room_types::with('facilities')->latest()->get();
         // return RoomTypeResource::collection($roomTypes);
@@ -74,11 +74,13 @@ class RoomTypeController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Room_types $roomTypes): RoomTypeResource
+    public function show(Room_types $roomTypes): JsonResponse
     {
         
         
-        return new RoomTypeResource($roomTypes->load('facilities'));
+        return response()->json([
+            'data' => new RoomTypeResource($roomTypes->load('facilities'))
+        ], 200);
     }
 
     /**
@@ -110,7 +112,8 @@ class RoomTypeController extends Controller
      * Remove the specified resource from storage.
      */
     public function destroy(Room_types $roomTypes): JsonResponse
-    {
+    {   
+        $roomTypes->facilities()->delete();
         $roomTypes->delete();
 
         return response()->json([
