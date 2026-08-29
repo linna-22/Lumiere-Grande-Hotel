@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Dashboard from './pages/dashboard/Dashboard'
 import Reservations from './pages/reservations/Reservations'
 import Rooms from './pages/rooms/Rooms'
+import RoomTypes from './pages/roomtypes/roomtypes'
 
 // Lightweight page switcher for now — swap this for React Router once the
 // public-facing website / online booking pages are added alongside the
@@ -9,6 +10,7 @@ import Rooms from './pages/rooms/Rooms'
 const pages = {
   Dashboard,
   Reservations,
+  RoomTypes,
   Rooms,
 }
 
