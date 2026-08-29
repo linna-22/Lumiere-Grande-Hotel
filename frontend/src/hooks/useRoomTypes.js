@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../api/client'
 
-// Laravel may return snake_case keys and store `facilities` as a JSON
-// array, a comma-separated string, or null depending on the column cast.
-// Normalize everything here so components never have to guess the shape.
 function normalizeRoomType(raw) {
   let facilities = raw.facilities ?? []
   if (typeof facilities === 'string') {
@@ -26,8 +23,15 @@ function normalizeRoomType(raw) {
   }
 }
 
-export function useRoomTypes() {
+const TAB_TO_STATUS = {
+  Active: 'active',
+  Inactive: 'inactive',
+}
+
+export function useRoomTypes({ activeTab = 'All', page = 1, perPage = 8 } = {}) {
   const [roomTypes, setRoomTypes] = useState([])
+  const [summary, setSummary] = useState(null)
+  const [meta, setMeta] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -35,29 +39,40 @@ export function useRoomTypes() {
     setLoading(true)
     setError(null)
     try {
-      const data = await apiFetch('/room-types')
+      const params = new URLSearchParams()
+      if (activeTab !== 'All') {
+        params.set('status', TAB_TO_STATUS[activeTab] ?? activeTab.toLowerCase())
+      }
+      params.set('page', page)
+      params.set('per_page', perPage)
+
+      const data = await apiFetch(`/room-types?${params.toString()}`)
       const list = Array.isArray(data) ? data : data.data ?? []
+
       setRoomTypes(list.map(normalizeRoomType))
+      setSummary(data.summary ?? null)
+      setMeta(
+        data.meta
+          ? {
+              current_page: data.meta.curren_page ?? data.meta.current_page,
+              last_page: data.meta.last_page,
+              per_page: data.meta.per_page,
+              total: data.meta.total,
+            }
+          : null
+      )
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeTab, page, perPage])
 
   useEffect(() => {
-    let cancelled = false
-    // wrap so the cancelled flag still works with the shared `load`
-    ;(async () => {
-      if (!cancelled) await load()
-    })()
-    return () => {
-      cancelled = true
-    }
+    load()
   }, [load])
 
   const deleteRoomType = useCallback(async (id) => {
-    // optimistic removal, roll back on failure
     const prev = roomTypes
     setRoomTypes((curr) => curr.filter((rt) => rt.id !== id))
     try {
@@ -68,5 +83,5 @@ export function useRoomTypes() {
     }
   }, [roomTypes])
 
-  return { roomTypes, loading, error, refetch: load, deleteRoomType }
+  return { roomTypes, summary, meta, loading, error, refetch: load, deleteRoomType }
 }
