@@ -31,4 +31,30 @@ class Room_types extends Model
     return $this->belongsToMany(Facility::class, 'room_type_facilities', 'room_type_id', 'facility_id');
     
     }
+
+    public function scopeFilter($query, array $filters){
+
+    $query->when($filters['search'] ?? null, function($q, $search) {
+       
+    $q->when(function ($sub) use ($search) {
+
+    $sub->where('name', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}");
+
+    });
+
+    });
+
+    $query->when($filters['status'] ?? null, function($q, $status) {
+
+    $q->when('status', $status);
+
+    });
+
+    $query->when($filters['capacity'] ?? null,  function($q, $capacity) {
+
+    $q->where('capacity', '>=', $capacity);
+
+    });
+
+    }
 }
