@@ -8,14 +8,14 @@ function capitalize(str = '') {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
-// Adjust this if your API returns the relation under a different key
-// (e.g. `roomType` instead of `room_type`) — check the network tab response.
 function normalizeRoom(apiRoom) {
   const type = apiRoom.room_type || apiRoom.roomType || {}
+  const facilities = type.facilities || []
 
   return {
     id: apiRoom.id,
     number: apiRoom.room_number,
+    room_type_id: apiRoom.room_type_id ?? type.id ?? '',
     type: type.name || 'Unknown',
     floor: apiRoom.floor,
     guests: type.max_occupancy ?? type.capacity ?? '-',
@@ -23,12 +23,21 @@ function normalizeRoom(apiRoom) {
     status: capitalize(apiRoom.status || ''),
     description: apiRoom.description || type.description || '',
     image: apiRoom.image_url || FALLBACK_IMAGE,
-    amenities: apiRoom.amenities || [], // not in your DB schema yet — see note below
+    amenities: facilities.map((f) => f.name ?? f),
   }
 }
+const TAB_TO_STATUS = {
+  Available: 'available',
+  Occupied: 'occupied',
+  Reserved: 'reserved',
+  Cleaning: 'cleaning',
+  Maintenance: 'maintenance',
+}
 
-export function useRooms() {
+export function useRooms({ activeTab = 'All', page = 1, perPage = 8 } = {}) {
   const [rooms, setRooms] = useState([])
+  const [summary, setSummary] = useState(null)
+  const [meta, setMeta] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -36,20 +45,28 @@ export function useRooms() {
     setLoading(true)
     setError(null)
     try {
-      const data = await apiFetch('/rooms')
-      // handles both a plain array response and a Laravel paginated { data: [...] } response
-      const list = Array.isArray(data) ? data : data.data ?? []
-      setRooms(list.map(normalizeRoom))
+      const params = new URLSearchParams()
+      if (activeTab !== 'All') {
+        params.set('status', TAB_TO_STATUS[activeTab] ?? activeTab.toLowerCase())
+      }
+      params.set('page', page)
+      params.set('per_page', perPage)
+
+      const data = await apiFetch(`/rooms?${params.toString()}`)
+
+      setRooms((data.data ?? []).map(normalizeRoom))
+      setSummary(data.summary ?? null)
+      setMeta(data.meta ?? null)
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeTab, page, perPage])
 
   useEffect(() => {
     fetchRooms()
   }, [fetchRooms])
 
-  return { rooms, loading, error, refetch: fetchRooms }
+  return { rooms, summary, meta, loading, error, refetch: fetchRooms }
 }
