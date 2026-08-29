@@ -18,7 +18,7 @@ class RoomResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'room_number' => 'Floor' .substr($this->room_number, 0,1),
+            'room_number' => $this->room_number,
             'floor' => $this->floor,
             'status' => $this->status,
             'description' => $this->description ?? 'No description avialable',

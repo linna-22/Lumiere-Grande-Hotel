@@ -109,3 +109,126 @@ class RoomTypeController extends Controller
 }
 
 then route
+
+<!-- ===============OTP loign=============  -->
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
+
+class AuthController extends Controller
+{
+    // 1. REGISTER USER
+    public function register(Request $request)
+    {
+        $fields = $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6',
+            'role'     => 'nullable|string', // Optional based on your table
+        ]);
+
+        $user = User::create([
+            'name'     => $fields['name'],
+            'email'    => $fields['email'],
+            'password' => Hash::make($fields['password']),
+            'role'     => $fields['role'] ?? 'user',
+            'status'   => 'active',
+        ]);
+
+        // Option A: Automatically send OTP upon registration
+        // $this->sendOtp(new Request(['email' => $user->email]));
+
+        // Option B: Return token directly
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'status'       => true,
+            'message'      => 'User registered successfully.',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'user'         => $user,
+        ], 201);
+    }
+
+    // 2. SEND OTP (For Login)
+    public function sendOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (isset($user->status) && $user->status !== 'active') {
+             return response()->json(['status' => false, 'message' => 'Account is inactive.'], 403);
+        }
+
+        $otp = rand(100000, 999999);
+
+        $user->update([
+            'otp'            => $otp,
+            'otp_expires_at' => Carbon::now()->addMinutes(5),
+        ]);
+
+        // TODO: Send OTP via Email / SMS here
+
+        return response()->json([
+            'status'    => true,
+            'message'   => 'OTP sent successfully.',
+            'debug_otp' => $otp // Remove in production!
+        ], 200);
+    }
+
+    // 3. VERIFY OTP & LOGIN
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'otp'   => 'required|numeric',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user->otp || $user->otp !== $request->otp) {
+            return response()->json(['status' => false, 'message' => 'Invalid OTP.'], 400);
+        }
+
+        if (Carbon::now()->greaterThan($user->otp_expires_at)) {
+            return response()->json(['status' => false, 'message' => 'OTP has expired.'], 400);
+        }
+
+        // Clear OTP fields
+        $user->update([
+            'otp'            => null,
+            'otp_expires_at' => null,
+        ]);
+
+        // Issue new token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'status'       => true,
+            'message'      => 'Login successful.',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'user'         => $user,
+        ], 200);
+    }
+
+    // 4. LOGOUT (Revoke Token)
+    public function logout(Request $request)
+    {   
+        // Revoke the token that was used to authenticate the current request
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Successfully logged out.',
+        ], 200);
+    }
+}

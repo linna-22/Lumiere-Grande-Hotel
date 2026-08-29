@@ -24,7 +24,7 @@ class IndexRoomRequest extends FormRequest
         return [
             
             'search' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:all,available,occupaid,reserved,cleaning,dirty,maintenance'],
+            'status' => ['nullable', 'string', 'in:all,available,occupied,reserved,cleaning,dirty,maintenance'],
             'room_type_id' => ['nullable', 'integer', 'exists:room_types,id'],
             'sort' => ['nullable', 'string', 'in:asc,desc'],
             'per_page' => ['nullable','integer', 'min:1', 'max:100'],
