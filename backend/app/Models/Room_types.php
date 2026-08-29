@@ -12,6 +12,7 @@ class Room_types extends Model
     use HasFactory;
 
     protected $fillable = [
+        
         'name',
         'description',
         'capacity',

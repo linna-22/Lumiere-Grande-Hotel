@@ -24,14 +24,21 @@ class UpdateRoomTypeRequest extends FormRequest
         return [
             
         'name' => 'sometimes | string | max:255',
-        'description'=> 'nullable| string | max:255',
-        'capacity' => 'sometimes| required | integer | min 1',
-        'base_price' => 'sometimes | required | numberic | min 0',
-        'max_occupancy' => 'sometimes | required | numberic min1',
-        'status' => 'sometimes | required | string | in:active, inactive',
-        'facilities_ids' => 'nullable|array',
-        'facilities_ids*' => 'exists:facilities,id'
 
+        'description'=> 'nullable| string | max:255',
+
+        'capacity' => 'sometimes| required | integer | min 1',
+
+        'base_price' => 'sometimes | required | numberic | min 0',
+
+        'max_occupancy' => 'sometimes | required | numberic min1',
+
+        'status' => 'sometimes | required | string | in:active, inactive',
+
+        'facilities_ids' => 'nullable|array',
+        
+        'facilities_ids*' => 'exists:facilities,id'
+        
         
         ];
     }

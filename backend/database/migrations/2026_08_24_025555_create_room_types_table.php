@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('description')->nullable();
             $table->integer('capacity')->default(1);
             $table->decimal('base_price', 10, 2);
-            $table->integer('max_occupancy');
+            $table->integer('max_occupancy')->nullable();
             $table->string('status')->default('active');
             $table->timestamps();
         });

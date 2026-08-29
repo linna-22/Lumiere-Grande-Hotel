@@ -232,3 +232,13 @@ class AuthController extends Controller
         ], 200);
     }
 }
+
+<!-- =========== -->
+
+use App\Http\Controllers\Api\RoomTypeController;
+
+Route::get('/room-types', [RoomTypeController::class, 'index']);      // List all
+Route::post('/room-types', [RoomTypeController::class, 'store']);     // Create new
+Route::get('/room-types/{roomTypes}', [RoomTypeController::class, 'show']); // View single
+Route::put('/room-types/{roomTypes}', [RoomTypeController::class, 'update']); // Update single
+Route::delete('/room-types/{roomTypes}', [RoomTypeController::class, 'destroy']); // Delete single
