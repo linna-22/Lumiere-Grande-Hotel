@@ -15,6 +15,8 @@ import {
   LogOut,
   X,
   ChevronLeft,
+  BedDoubleIcon,
+  Bed,
 } from 'lucide-react'
 
 const navGroups = [
@@ -22,7 +24,9 @@ const navGroups = [
     label: '',
     items: [
       { label: 'Dashboard', icon: LayoutGrid },
-      { label: 'Reservations', icon: CalendarDays, badge: 8 },
+      { label: 'Reservations', icon: CalendarDays },
+      // { label: 'RoomTypes', icon: BedDoubleIcon, badge: 2},
+      { label: 'RoomTypes', icon: Bed},
       { label: 'Rooms', icon: BedDouble },
       // { label: 'Guests', icon: Users },
     ],

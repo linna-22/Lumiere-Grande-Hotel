@@ -6,12 +6,14 @@ import StatsCards from "../../components/rooms/StatsCards";
 import FilterTabs from "../../components/rooms/FilterTabs";
 import RoomsGrid from "../../components/rooms/RoomsGrid";
 import RoomsList from "../../components/rooms/RoomsList";
-import Pagination from "../../components/rooms/Pagination";
+// import Pagination from "../../components/rooms/Pagination";
+import Pagination from "../../components/common/Pagination";
 import { useRooms } from "../../hooks/useRooms";
 import RoomFormModal from "../../components/rooms/RoomFormModal";
 import SuccessModal from "../../components/rooms/SuccessModal";
 import ConfirmDeleteModal from "../../components/rooms/ConfirmDeleteModal";
 import { apiFetch } from "../../api/client";
+import Loading from '../../components/common/Loading'
 
 export default function Rooms({ onNavigate }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -95,11 +97,7 @@ export default function Rooms({ onNavigate }) {
           <StatsCards summary={summary} />
           <FilterTabs onChange={handleTabChange} />
 
-          {loading && (
-            <div className="bg-base-850 border border-base-border rounded-xl mt-6 p-10 text-center text-slate-500">
-              Loading rooms...
-            </div>
-          )}
+          {loading && !error && <Loading label="Loading Rooms…" />}
 
           {error && !loading && (
             <div className="bg-base-850 border border-base-border rounded-xl mt-6 p-10 text-center text-rose-400">
@@ -125,11 +123,7 @@ export default function Rooms({ onNavigate }) {
                   onDelete={handleDeleteClick}
                 />
               )}
-              <Pagination
-                currentPage={page}
-                meta={meta}
-                onPageChange={handlePageChange}
-              />
+              <Pagination currentPage={page} meta={meta} onPageChange={setPage} itemLabel="rooms" />
             </>
           )}
         </main>
