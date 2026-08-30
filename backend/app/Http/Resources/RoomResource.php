@@ -23,10 +23,11 @@ class RoomResource extends JsonResource
             'status' => $this->status,
             'description' => $this->description ?? 'No description avialable',
             'image_url' => $this->image_url,
+            'room_type_id' => $this->room_type_id,
             'room_type' => new RoomTypeResource($this->whenLoaded('roomType')),
             'capacity' => ($this-> roomType?->capacity ?? 2). 'guests',
             'amenities' => $this->roomType?->amenities??['Wifi', 'Ac', 'Tv'],
-            'created_at' => $this->created_at->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

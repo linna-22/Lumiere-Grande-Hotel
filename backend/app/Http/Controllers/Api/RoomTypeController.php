@@ -7,6 +7,7 @@ use App\Http\Requests\RoomType\IndexRoomTypeRequest;
 use App\Http\Requests\RoomType\StoreRoomTypeRequest;
 use App\Http\Requests\RoomType\UpdateRoomTypeRequest;
 use App\Http\Resources\RoomTypeResource;
+use App\Models\Facility;
 use App\Models\Room_types;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,7 @@ class RoomTypeController extends Controller
         $count = Room_types::select('status', DB::raw('count(*) as count')) -> groupBy('status')->pluck('count', 'status')->toArray();
 
         $summary = [
+
             'total' => Room_types::count(),
             'active' => $count['active'] ?? 0,
             'inactive' => $count['inactive'] ?? 0,
@@ -58,43 +60,65 @@ class RoomTypeController extends Controller
         
         $roomTypes = Room_types::create($request->validated());
 
-        if($request->has('facility_ids')){
+        if($request->filled('facilities')){
 
-        $roomTypes->facilities()->sync($request->facility_ids);
+        $facilityNames = array_map('trim', explode(',', $request->facilities));
 
+        $facilityIds = [];
+
+        foreach($facilityNames as $name){
+
+            if(!empty($name)) {
+
+            $facility = Facility::firstOrCreate(['name' => $name]);
+            
+            $facilityIds[] = $facility->id;
+
+            }
+         }
         }
 
+        $roomTypes->facilities()->sync($request->facility_ids);
         return response()->json([
             'message' => 'Room Type Create Successfully',
             'data' => new RoomTypeResource($roomTypes->load('facilities'))
         ], 201);
+
+        // if($request->has('facility_ids')){
+
+        // }
+
     }
 
 
     /**
      * Display the specified resource.
      */
-    public function show(Room_types $roomTypes): JsonResponse
+    public function show(Room_types $room_type): JsonResponse
     {
         
-        
+        dd($room_type->toArray());
+
         return response()->json([
-            'data' => new RoomTypeResource($roomTypes->load('facilities'))
+
+            'data' => new RoomTypeResource($room_type->load('facilities'))
+
         ], 200);
+
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateRoomTypeRequest $request, Room_types $roomTypes): JsonResponse
+    public function update(UpdateRoomTypeRequest $request, Room_types $room_types): JsonResponse
     {
         
 
-        $roomTypes->update($request->validated());
+        $room_types->update($request->validated());
 
         if($request->has('facility_ids')) {
 
-        $roomTypes->facilities()->sync($request->facility_ids);
+        $room_types->facilities()->sync($request->facility_ids);
 
 
         }
@@ -102,7 +126,7 @@ class RoomTypeController extends Controller
         return response()->json([
 
         'message' => "Room Type Update successfully",
-        'data' => new RoomTypeResource($roomTypes->load('facilities'))
+        'data' => new RoomTypeResource($room_types->load('facilities'))
         ], 200);
 
         

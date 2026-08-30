@@ -40,7 +40,7 @@ class Rooms extends Model
     
     }
 
-    // ================Search filter pagination block===========
+    // ================Search filter pagination block ===========
 
     public function scopeFilter(Builder $query, array $filter): Builder {
 

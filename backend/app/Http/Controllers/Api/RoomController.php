@@ -8,7 +8,9 @@ use App\Http\Requests\Room\StoreRoomRequest;
 use App\Http\Requests\Room\UpdateRoomRequest;
 use App\Http\Resources\RoomResource;
 use App\Models\Rooms;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary; 
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +37,7 @@ class RoomController extends Controller
     ];
 
     $room = Rooms::with('roomType.facilities')->filter($filter)->paginate($filter['per_page'] ?? 8);
-    
+      // return RoomResource::collection($rooms);
     return response()->json([
         'summary' => $summary,
         'data' => RoomResource::collection($room)->response()->getData()->data,
@@ -48,7 +50,7 @@ class RoomController extends Controller
     ]);
     // $rooms = Rooms::with('roomType.facilities')->latest()->get();
 
-    // return RoomResource::collection($rooms);
+  
 
     }
 
@@ -80,18 +82,32 @@ class RoomController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Rooms $room): RoomResource
+    public function show(string $id): JsonResponse
     {
-        return new RoomResource($room->load('roomType.facilities'));
+        
+        $room = Rooms::with('roomType.facilities')->findOrFail($id);
+
+        return response()->json([
+            
+        'data' => new RoomResource($room)
+        
+        ], 200);
+
+
         
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateRoomRequest $request, Rooms $room): JsonResponse
+    public function update(UpdateRoomRequest $request, string $id): JsonResponse
     {
-        $data = $request->validated();
+
+    try{
+
+    $room = Rooms::findOrFail($id);
+
+     $data = $request->validated();
 
         if($request->hasfile('image')){
 
@@ -117,13 +133,35 @@ class RoomController extends Controller
             'data' => new RoomResource($room->load('roomType.facilities'))
 
         ], 200);
+
+    }catch(ModelNotFoundException $e){
+
+    return response()->json([
+        'message' => 'Room not found',
+        'data' => null,
+    ], 404);
+       
+    }  catch(Exception $e){
+
+    return response()->json([
+
+    'message' => 'fail to update room',
+    'error' => $e->getMessage()
+    ], 500);
+    }
+
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Rooms $room): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
+
+    try{
+
+    $room = Rooms::findOrFail($id);
+    
         if($room->cloudinary_id){
 
             Cloudinary::destroy($room->cloudinary_id);
@@ -134,5 +172,22 @@ class RoomController extends Controller
         return response()->json([
             'message' => 'Room deleted successfully'
         ], 200);
+
+    }catch(ModelNotFoundException $e){
+
+    return response()->json([
+        'message' => 'Room not found',
+        'data' => null,
+
+    ], 404);
+
+    }catch(Exception $e){
+
+    return response()->json([
+        'message' => 'Failed to delete room',
+        'error' => $e->getMessage(),
+        'data' => null,
+    ], 500);
+    }
     }
 }
