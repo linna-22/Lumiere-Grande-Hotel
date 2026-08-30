@@ -24,9 +24,12 @@ class User extends Authenticatable
         'email',
         'role',
         'status',
+        'provider',
+        'provider_id',
+        'avatar',
+        'is_2fa_enabled',
         'password',
-         'otp',
-         'otp_expired_at'
+         
     ];
 
     /**
