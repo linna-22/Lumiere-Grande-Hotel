@@ -105,7 +105,7 @@ class RoomController extends Controller
 
     try{
 
-    $room = Rooms::findOrFail($id);
+    $room = Rooms::find($id);
 
      $data = $request->validated();
 
@@ -130,7 +130,7 @@ class RoomController extends Controller
         return response()->json([
 
             'message' => 'Room updated successfully',
-            'data' => new RoomResource($room->load('roomType.facilities'))
+            'data' => new RoomResource($room->fresh()->load('roomType.facilities'))
 
         ], 200);
 

@@ -24,7 +24,9 @@ class UpdateRoomRequest extends FormRequest
         return [
 
 
-            'room_number' => 'sometimes|required|string|max:50|unique:rooms,room_number,' .$this->room->id,
+            $roomId = $this->route('id'),
+    
+            'room_number' => 'sometimes|required|string|max:50|unique:rooms,room_number,' . $roomId,
             'room_type_id' => 'sometimes|required|exists:room_types,id',
             'floor' => 'nullable|integer',
             'status' => 'sometimes|required|string|in:available,occupied,dirty,maintenance',

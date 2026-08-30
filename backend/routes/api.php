@@ -34,11 +34,11 @@ Route::delete('/room-types/{roomType}', [RoomTypeController::class, 'destroy']);
 
 // ======================Room api======================
 
-Route::get('/rooms', [RoomController::class, 'index'])->name('room');
-Route::post('/rooms/create', [RoomController::class, 'store'])->name('room.create');
-Route::get('/rooms/{id}', [RoomController::class, 'show'])->name('room.show');
-Route::put('/rooms/{id}', [RoomTypeController::class, 'update'])->name('room.update');
-Route::delete('rooms/{id}', [RoomController::class, 'destroy'])->name('room.destroy');
+Route::get('/rooms', [RoomController::class, 'index'])->name('rooms');
+Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
+Route::get('/rooms/{id}', [RoomController::class, 'show'])->name('rooms.show');
+Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
+Route::delete('rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
 // ================Public route ============
 
