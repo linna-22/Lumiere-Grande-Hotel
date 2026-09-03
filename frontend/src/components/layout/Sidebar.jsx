@@ -21,7 +21,7 @@ import {
 
 const navGroups = [
   {
-    label: '',
+    label: 'Main',
     items: [
       { label: 'Dashboard', icon: LayoutGrid },
       { label: 'Reservations', icon: CalendarDays },
@@ -31,17 +31,17 @@ const navGroups = [
       // { label: 'Guests', icon: Users },
     ],
   },
-  // {
-  //   label: 'Operations',
-  //   items: [
-  //     { label: 'Check In', icon: LogIn, badge: 5 },
-  //     { label: 'Check Out', icon: DoorOpen, badge: 3 },
-  //     { label: 'Housekeeping', icon: Sparkles, badge: 7 },
-  //     { label: 'Payments', icon: CreditCard },
-  //     { label: 'Invoices', icon: FileText },
-  //     { label: 'POS', icon: ShoppingCart },
-  //   ],
-  // },
+  {
+    label: 'Operations',
+    items: [
+      { label: 'Check In', icon: LogIn, badge: 5 },
+      // { label: 'Check Out', icon: DoorOpen, badge: 3 },
+      // { label: 'Housekeeping', icon: Sparkles, badge: 7 },
+      // { label: 'Payments', icon: CreditCard },
+      // { label: 'Invoices', icon: FileText },
+      // { label: 'POS', icon: ShoppingCart },
+    ],
+  },
   // {
   //   label: 'Amenities',
   //   items: [
