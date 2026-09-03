@@ -1,6 +1,29 @@
 import { useState } from 'react'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
+function GoogleIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" {...props}>
+      <path
+        fill="#4285F4"
+        d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.58-5.17 3.58-8.81z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.88-3c-1.08.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11C3.24 21.3 7.28 24 12 24z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.27 14.27c-.24-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.62H1.27A11.96 11.96 0 000 12c0 1.93.46 3.76 1.27 5.38l4-3.11z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.77c1.76 0 3.34.6 4.59 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.28 0 3.24 2.7 1.27 6.62l4 3.11C6.22 6.88 8.87 4.77 12 4.77z"
+      />
+    </svg>
+  )
+}
+
 export default function Login({ onNavigate }) {
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
@@ -14,6 +37,11 @@ export default function Login({ onNavigate }) {
     e.preventDefault()
     // TODO: wire up to /api/login once the endpoint exists
     console.log('Login form submitted:', form)
+  }
+
+  function handleGoogleSignIn() {
+    // TODO: wire up to Google OAuth flow once the backend endpoint exists
+    console.log('Sign in with Google clicked')
   }
 
   return (
@@ -40,6 +68,21 @@ export default function Login({ onNavigate }) {
               Welcome back
             </h2>
             <p className="text-sm text-slate-400 mt-1">Sign in to manage your hotel</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="w-full flex items-center justify-center gap-2.5 bg-base-850 hover:bg-base-800 border border-base-border text-slate-200 font-medium py-2.5 rounded-lg transition-colors"
+          >
+            <GoogleIcon />
+            Sign in with Google
+          </button>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px bg-base-border flex-1" />
+            <span className="text-xs text-slate-500 uppercase tracking-wide">or continue with email</span>
+            <div className="h-px bg-base-border flex-1" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
