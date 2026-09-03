@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SendOtpMail;
+use Illuminate\Validation\Rules\Password;
 use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
@@ -20,10 +21,14 @@ class AuthController extends Controller
 
     try{
 
-     $request->validate([
+    $validated = $request->validate([
         'name' => 'required|string|max:255',
         'email' => 'required|email|max:255|unique:users',
-        'password' => 'required|string:min:8|confirmed',
+        'password' => [
+            'required',
+            'confirmed',
+            Password::min(8)->letters()->numbers()->symbols()
+        ],
     ]);
 
     $users = User::create([
@@ -33,7 +38,7 @@ class AuthController extends Controller
         'role' => 'customer',
         'status' => 'active',
         'provider' => 'local',
-        'prodvider_id' => null,
+        'provider_id' => null,
         'avatar' => null,
         'is_2fa_enabled' => false
 
@@ -61,7 +66,7 @@ class AuthController extends Controller
 
     public function login(Request $request){
 
-    $credentials = $request -> validated([
+    $credentials = $request -> validate([
         'email' => 'required|email',
         'password' => 'required|string'
     ]);
@@ -82,7 +87,7 @@ class AuthController extends Controller
 
     $staffRoles = ['super_admin','admin', 'cashire', 'manager'];
 
-    $requiredOtp = in_array($users->role, $staffRoles) || $users->is_2fa_enables;
+    $requiredOtp = in_array($users->role, $staffRoles) || $users->is_2fa_enabled;
 
     if($requiredOtp){
 
@@ -102,6 +107,8 @@ class AuthController extends Controller
 
 
     }
+
+    $users->tokens()->delete();
 
     $token = $users->createToken('auth_token')->plainTextToken;
 
@@ -136,6 +143,7 @@ class AuthController extends Controller
 
         $users = User::findOrFail($validated['user_id']);
 
+        $users->tokens()->delete();
         $token = $users->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -177,9 +185,8 @@ class AuthController extends Controller
         if ($user) {
 
             if ($user->status !== 'active') {
-                return response()->json([
-                    'message' => 'Your account has been suspended.',
-                ], 403);
+
+               return redirect()->away("{$frontendurl}/login?error=account_suspended");
             }
 
           
@@ -203,6 +210,8 @@ class AuthController extends Controller
             ]);
         }
 
+        $user->token()->delete();
+
        
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -222,6 +231,27 @@ class AuthController extends Controller
         ], 500);
     }
 }
+
+public function logout(Request $request){
+
+    try{
+
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json([
+        'message' => "logout success"
+    ], 200);
+
+    }catch(Exception $e){
+
+    return response()->json([
+        'message' => "failed to logout",
+        'error' => $e->getMessage()
+    ], 500);
+
+    }
+}
     
 
 }
+

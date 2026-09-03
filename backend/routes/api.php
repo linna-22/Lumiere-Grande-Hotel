@@ -8,44 +8,56 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| Public Routes (No Authentication Required)
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
-
-// Route::apiResource('room-types', RoomTypeController::class);
-
-// Route::apiResource('rooms', RoomController::class);
-
-// Manual Room Types Routes
-
-// ====================RommType api =============================
+// Public Read-Only Routes
 Route::get('/room-types', [RoomTypeController::class, 'index']);
-Route::post('/room-types', [RoomTypeController::class, 'store']);
 Route::get('/room-types/{roomType}', [RoomTypeController::class, 'show']);
-Route::put('/room-types/{roomType}', [RoomTypeController::class, 'update']);
-Route::delete('/room-types/{roomType}', [RoomTypeController::class, 'destroy']);
-
-
-// ======================Room api======================
 
 Route::get('/rooms', [RoomController::class, 'index'])->name('rooms');
-Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
 Route::get('/rooms/{id}', [RoomController::class, 'show'])->name('rooms.show');
-Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
-Route::delete('rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
-// ================User register ============
+// Rate-Limited Authentication Routes (Max 10 requests per minute)
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/register', [AuthController::class, 'register'])->name('register');
+    Route::post('/login', [AuthController::class, 'login']); // POST endpoint for actual login
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify.otp');
+});
 
-Route::post('/register', [AuthController::class, 'register'])->name('register');
-
-// ===================Google Login===============
-
+// Google OAuth Routes
 Route::get('/auth/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [AuthController::class, 'GoogleCallback'])->name('google.callback');
 
+// Fallback JSON route when Sanctum blocks an unauthenticated request
+Route::get('/login', function () {
+    return response()->json(['message' => 'Unauthenticated.'], 401);
+})->name('login');
+
+
+/*
+|--------------------------------------------------------------------------
+| Protected Routes (Requires Bearer Token)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Authenticated User Profile
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+    // Logout
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Room Types Management (Admin / Staff Only)
+    Route::post('/room-types', [RoomTypeController::class, 'store']);
+    Route::put('/room-types/{roomType}', [RoomTypeController::class, 'update']);
+    Route::delete('/room-types/{roomType}', [RoomTypeController::class, 'destroy']);
+
+    // Rooms Management (Admin / Staff Only)
+    Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
+    Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
+    Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
+});
