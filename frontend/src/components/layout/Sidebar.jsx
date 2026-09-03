@@ -35,7 +35,7 @@ const navGroups = [
     label: 'Operations',
     items: [
       { label: 'Check In', icon: LogIn, badge: 5 },
-      // { label: 'Check Out', icon: DoorOpen, badge: 3 },
+      { label: 'Check Out', icon: DoorOpen, badge: 3 },
       // { label: 'Housekeeping', icon: Sparkles, badge: 7 },
       // { label: 'Payments', icon: CreditCard },
       // { label: 'Invoices', icon: FileText },

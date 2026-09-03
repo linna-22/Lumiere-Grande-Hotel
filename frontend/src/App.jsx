@@ -7,6 +7,7 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import VerifyOtp from './pages/auth/VerifyOtp'
 import CheckIn from './pages/checkin/CheckIn'
+import CheckOut from './pages/checkout/CheckOut'
 
 // Lightweight page switcher for now — swap this for React Router once the
 // public-facing website / online booking pages are added alongside the
@@ -20,6 +21,7 @@ const pages = {
   Register,
   VerifyOtp,
   'Check In': CheckIn,
+  'Check Out': CheckOut,
 }
 
 export default function App() {
