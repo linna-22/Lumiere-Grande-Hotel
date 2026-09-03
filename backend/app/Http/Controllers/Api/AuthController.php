@@ -283,7 +283,7 @@ public function githubCallback(Request $request)
             ]);
         }
 
-        // FIXED: Plural tokens() method
+   
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -316,6 +316,83 @@ public function logout(Request $request){
     }
 }
 
+public function redirectFacebook(){
+
+  /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+
+  $driver = Socialite::driver('facebook');
+
+  return $driver->scopes(['email'])->stateless()->redirect();
+
 
 }
+
+public function facebookCallback(Request $request)
+{
+    try {
+        /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+        $driver = Socialite::driver('facebook');
+
+        $facebookUser = $driver->stateless()->user();
+
+        $email = $facebookUser->getEmail() ? strtolower($facebookUser->getEmail()) : null;
+
+        if (!$email) {
+            return response()->json([
+                'message' => 'Facebook account must have an email associated with it',
+            ], 422);
+        }
+
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            // Check status first
+            if ($user->status !== 'active') {
+                return response()->json([
+                    'message' => 'Your account has been suspended',
+                ], 403);
+            }
+
+            // Update provider info if missing
+            if (!$user->provider_id) {
+                $user->update([
+                    'provider'    => 'facebook',
+                    'provider_id' => $facebookUser->getId(), // Fixed getId() case
+                    'avatar'      => $user->avatar ?? $facebookUser->getAvatar(),
+                ]);
+            }
+        } else {
+            // Create user if account doesn't exist
+            $user = User::create([
+                'name'        => $facebookUser->getName() ?? 'Facebook User',
+                'email'       => $email,
+                'password'    => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(24)),
+                'provider'    => 'facebook',
+                'provider_id' => $facebookUser->getId(),
+                'avatar'      => $facebookUser->getAvatar(),
+                'role'        => 'customer',
+                'status'      => 'active',
+            ]);
+        }
+
+        // Revoke existing tokens and create a new one
+        $user->tokens()->delete();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message'      => 'Login with Facebook success',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'user'         => $user,
+        ], 200);
+
+    } catch (\Exception $e) { // Fixed \Exception class import
+        return response()->json([
+            'message' => 'Failed to login with Facebook',
+            'error'   => $e->getMessage(),
+        ], 500);
+    }
+}
+}
+
 

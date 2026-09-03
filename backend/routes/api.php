@@ -35,6 +35,9 @@ Route::get('/auth/google/callback', [AuthController::class, 'GoogleCallback'])->
 Route::get('/auth/github', [AuthController::class, 'redirectGithub'])->name('auth.github');
 Route::get('/auth/github/callback', [AuthController::class, 'githubCallback'])->name('github.callback');
 
+
+Route::get('auth/facebook', [AuthController::class, 'redirectFacebook'])->name('auth.facebook');
+Route::get('auth/facebook/callback', [AuthController::class, 'facebookCallback'])->name('facebook.callback');
 // Fallback JSON route when Sanctum blocks an unauthenticated request
 Route::get('/login', function () {
     return response()->json(['message' => 'Unauthenticated.'], 401);
