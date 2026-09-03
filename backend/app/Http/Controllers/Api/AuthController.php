@@ -210,7 +210,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user->token()->delete();
+        $user->tokens()->delete();
 
        
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -225,12 +225,76 @@ class AuthController extends Controller
         // ], 200);
 
     } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Failed to authenticate with Google',
-            'error'   => $e->getMessage(),
-        ], 500);
+        return redirect()->away("{$frontendurl}/login?error=google_auth_failed");
     }
 }
+
+public function redirectGithub(){
+
+        /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+
+        $driver = Socialite::driver('github');
+
+      return $driver->scopes(['user:email'])->stateless()->redirect();;
+
+
+}
+
+public function githubCallback(Request $request)
+{
+    $frontendurl = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
+
+    try {
+        /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+        $driver = Socialite::driver('github');
+
+        $githubUser = $driver->stateless()->user();
+
+        $email = $githubUser->getEmail() ? strtolower($githubUser->getEmail()) : null;
+
+        if (!$email) {
+            return redirect()->away("{$frontendurl}/login?error=github_email_not_found");
+        }
+
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            if ($user->status !== 'active') {
+                return redirect()->away("{$frontendurl}/login?error=account_suspended");
+            }
+
+            if (!$user->provider_id) {
+                $user->update([
+                    'provider'    => 'github',
+                    'provider_id' => $githubUser->getId(),
+                    'avatar'      => $user->avatar ?? $githubUser->getAvatar(),
+                ]);
+            }
+        } else {
+            $user = User::create([
+                'name'        => $githubUser->getName() ?? $githubUser->getNickname() ?? 'GitHub User',
+                'email'       => $email,
+                'password'    => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(24)), // Prevents SQL non-null password errors
+                'provider'    => 'github',
+                'provider_id' => $githubUser->getId(),
+                'avatar'      => $githubUser->getAvatar(),
+                'role'        => 'customer',
+                'status'      => 'active',
+            ]);
+        }
+
+        // FIXED: Plural tokens() method
+        $user->tokens()->delete();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return redirect()->away("{$frontendurl}/auth/callback?token={$token}&user_id={$user->id}");
+
+    } catch (\Exception $e) {
+        return redirect()->away("{$frontendurl}/login?error=github_auth_failed");
+    }
+}
+
 
 public function logout(Request $request){
 
@@ -251,7 +315,7 @@ public function logout(Request $request){
 
     }
 }
-    
+
 
 }
 

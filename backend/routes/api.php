@@ -30,6 +30,11 @@ Route::middleware('throttle:10,1')->group(function () {
 Route::get('/auth/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [AuthController::class, 'GoogleCallback'])->name('google.callback');
 
+// GITHUB OAUTH ROUTES
+
+Route::get('/auth/github', [AuthController::class, 'redirectGithub'])->name('auth.github');
+Route::get('/auth/github/callback', [AuthController::class, 'githubCallback'])->name('github.callback');
+
 // Fallback JSON route when Sanctum blocks an unauthenticated request
 Route::get('/login', function () {
     return response()->json(['message' => 'Unauthenticated.'], 401);
