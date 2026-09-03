@@ -40,16 +40,12 @@ Route::get('/rooms/{id}', [RoomController::class, 'show'])->name('rooms.show');
 Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
 Route::delete('rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
-// ================Public route ============
+// ================User register ============
 
-Route::post('/register', [AuthController::class], 'register');
-Route::post('/send-otp', [AuthController::class], 'sendOtp');
-Route::post('/verify-otp', [AuthController::class], 'verifyOtp');
+Route::post('/register', [AuthController::class, 'register'])->name('register');
 
-Route::middleware(['auth:sanctum'])->controller(AuthController::class)->group(function() {
+// ===================Google Login===============
 
-    Route::get('/users', function(Request $request) {
-        return $request->user();
-    });
+Route::get('/auth/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [AuthController::class, 'GoogleCallback'])->name('google.callback');
 
-});
