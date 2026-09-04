@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RoomTypeController;
+use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\GuestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -87,3 +88,4 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
+Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
