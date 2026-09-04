@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { useState } from "react";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
 
 function GoogleIcon(props) {
   return (
@@ -21,40 +22,61 @@ function GoogleIcon(props) {
         d="M12 4.77c1.76 0 3.34.6 4.59 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.28 0 3.24 2.7 1.27 6.62l4 3.11C6.22 6.88 8.87 4.77 12 4.77z"
       />
     </svg>
-  )
+  );
 }
 
 function GitHubIcon(props) {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" {...props}>
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="currentColor"
+      {...props}
+    >
       <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
     </svg>
-  )
+  );
 }
 
 export default function Login({ onNavigate }) {
-  const [form, setForm] = useState({ email: '', password: '' })
-  const [showPassword, setShowPassword] = useState(false)
+  const { login } = useAuth();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
   function handleChange(e) {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  function handleSubmit(e) {
-    e.preventDefault()
-    // TODO: wire up to /api/login once the endpoint exists
-    console.log('Login form submitted:', form)
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setErrors({});
+    try {
+      await login(form);
+      onNavigate?.("Dashboard");
+    } catch (err) {
+      if (err.status === 422 && err.data?.errors) {
+        setErrors(err.data.errors);
+      } else if (err.status === 401) {
+        setErrors({ general: ["Incorrect email or password."] });
+      } else {
+        setErrors({ general: [err.message] });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleGoogleSignIn() {
-    // TODO: wire up to Google OAuth flow once the backend endpoint exists
-    console.log('Sign in with Google clicked')
+    window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/google`;
   }
 
   function handleGitHubSignIn() {
-    // TODO: wire up to GitHub OAuth flow once the backend endpoint exists
-    console.log('Sign in with GitHub clicked')
+    window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/github`;
   }
 
   return (
@@ -68,8 +90,12 @@ export default function Login({ onNavigate }) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-base-950 via-base-950/60 to-black/30" />
         <div className="relative z-10 flex flex-col justify-end p-12">
-          <h1 className="text-4xl font-serif font-bold text-white mb-2">LUMIÈRE GRAND</h1>
-          <p className="text-slate-300 text-sm">Hotel Management System · Phnom Penh, Cambodia</p>
+          <h1 className="text-4xl font-serif font-bold text-white mb-2">
+            LUMIÈRE GRAND
+          </h1>
+          <p className="text-slate-300 text-sm">
+            Hotel Management System · Phnom Penh, Cambodia
+          </p>
         </div>
       </div>
 
@@ -80,7 +106,9 @@ export default function Login({ onNavigate }) {
             <h2 className="text-2xl sm:text-3xl font-bold text-white font-serif tracking-tight">
               Welcome back
             </h2>
-            <p className="text-sm text-slate-400 mt-1">Sign in to manage your hotel</p>
+            <p className="text-sm text-slate-400 mt-1">
+              Sign in to manage your hotel
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -92,6 +120,10 @@ export default function Login({ onNavigate }) {
               <GoogleIcon />
               Sign in with Google
             </button>
+            {/* <a href={`${import.meta.env.VITE_SANCTUM_URL}/api/auth/google`} className="w-full flex items-center justify-center gap-2.5 bg-base-850 hover:bg-base-800 border border-base-border text-slate-200 font-medium py-2.5 rounded-lg transition-colors">
+              <GoogleIcon />
+              Sign in with Google
+            </a> */}
 
             <button
               type="button"
@@ -105,15 +137,22 @@ export default function Login({ onNavigate }) {
 
           <div className="flex items-center gap-3 my-6">
             <div className="h-px bg-base-border flex-1" />
-            <span className="text-xs text-slate-500 uppercase tracking-wide">or continue with email</span>
+            <span className="text-xs text-slate-500 uppercase tracking-wide">
+              or continue with email
+            </span>
             <div className="h-px bg-base-border flex-1" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Email</label>
+              <label className="text-sm text-slate-400 mb-1.5 block">
+                Email
+              </label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Mail
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
                 <input
                   type="email"
                   name="email"
@@ -128,11 +167,16 @@ export default function Login({ onNavigate }) {
             </div>
 
             <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Password</label>
+              <label className="text-sm text-slate-400 mb-1.5 block">
+                Password
+              </label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Lock
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={form.password}
                   onChange={handleChange}
@@ -153,26 +197,40 @@ export default function Login({ onNavigate }) {
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 text-slate-400 cursor-pointer">
-                <input type="checkbox" className="rounded border-base-border bg-base-850 accent-amber-400" />
+                <input
+                  type="checkbox"
+                  className="rounded border-base-border bg-base-850 accent-amber-400"
+                />
                 Remember me
               </label>
-              <a href="#" className="text-amber-400 hover:text-amber-300 transition-colors">
+              <a
+                href="#"
+                className="text-amber-400 hover:text-amber-300 transition-colors"
+              >
                 Forgot password?
               </a>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold py-2.5 rounded-lg transition-colors"
+              disabled={submitting}
+              className="w-full flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-500 disabled:opacity-60 text-base-950 font-semibold py-2.5 rounded-lg transition-colors"
             >
-              Sign In
+              {submitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </button>
           </form>
 
           <p className="text-sm text-slate-400 text-center mt-6">
-            Don't have an account?{' '}
+            Don't have an account?{" "}
             <button
-              onClick={() => onNavigate?.('Register')}
+              onClick={() => onNavigate?.("Register")}
               className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
             >
               Create one
@@ -180,6 +238,11 @@ export default function Login({ onNavigate }) {
           </p>
         </div>
       </div>
+      {errors.general && (
+        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3 mb-5">
+          {errors.general[0]}
+        </div>
+      )}
     </div>
-  )
+  );
 }

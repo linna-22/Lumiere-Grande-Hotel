@@ -53,11 +53,12 @@ export default function Register({ onNavigate }) {
   }
 
   function handleGoogleSignUp() {
-    // TODO: wire up to Google OAuth flow once the backend endpoint exists
+    window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/google`
     console.log('Sign up with Google clicked')
   }
 
   function handleGitHubSignUp() {
+    window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/github`
     // TODO: wire up to GitHub OAuth flow once the backend endpoint exists
     console.log('Sign up with GitHub clicked')
   }
