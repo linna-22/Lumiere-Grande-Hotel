@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RoomTypeController;
+use App\Http\Controllers\GuestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -69,3 +70,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 });
+
+
+// ======================Guest=============================
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/guest/profile', [GuestController::class, 'showProfile'])->name('guest.profile');
+    Route::put('/guest/profile', [GuestController::class, 'updateProfile']);
+
+   Route::middleware('role:admin,receptionist')->group(function () {
+        Route::get('/admin/guests', [GuestController::class, 'index']);
+        Route::post('/admin/guests/walk-in', [GuestController::class, 'storeWalkIn']);
+        Route::get('/admin/guests/{id}', [GuestController::class, 'show']);
+    });
+
+});
+
