@@ -346,23 +346,23 @@ public function facebookCallback(Request $request)
         $user = User::where('email', $email)->first();
 
         if ($user) {
-            // Check status first
+       
             if ($user->status !== 'active') {
                 return response()->json([
                     'message' => 'Your account has been suspended',
                 ], 403);
             }
 
-            // Update provider info if missing
+      
             if (!$user->provider_id) {
                 $user->update([
                     'provider'    => 'facebook',
-                    'provider_id' => $facebookUser->getId(), // Fixed getId() case
+                    'provider_id' => $facebookUser->getId(),
                     'avatar'      => $user->avatar ?? $facebookUser->getAvatar(),
                 ]);
             }
         } else {
-            // Create user if account doesn't exist
+       
             $user = User::create([
                 'name'        => $facebookUser->getName() ?? 'Facebook User',
                 'email'       => $email,
@@ -375,7 +375,6 @@ public function facebookCallback(Request $request)
             ]);
         }
 
-        // Revoke existing tokens and create a new one
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -386,7 +385,7 @@ public function facebookCallback(Request $request)
             'user'         => $user,
         ], 200);
 
-    } catch (\Exception $e) { // Fixed \Exception class import
+    } catch (\Exception $e) { 
         return response()->json([
             'message' => 'Failed to login with Facebook',
             'error'   => $e->getMessage(),
