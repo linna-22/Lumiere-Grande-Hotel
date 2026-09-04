@@ -15,7 +15,12 @@
             </span>
         </div>
 
-        <p style="color: #999999; font-size: 14px; text-align: center;">The verification code live on 3 minutes</p>
+        <p style="color: #999999; font-size: 14px; text-align: center;">
+            The verification code expired on 
+            <span id="timeCount">3:00</span>
+        </p>
     </div>
 </body>
+
+
 </html>

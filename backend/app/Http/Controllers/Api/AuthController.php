@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SendOtpMail;
+use Illuminate\Validation\Rules\Password;
 use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
@@ -20,10 +21,14 @@ class AuthController extends Controller
 
     try{
 
-     $request->validate([
+    $validated = $request->validate([
         'name' => 'required|string|max:255',
         'email' => 'required|email|max:255|unique:users',
-        'password' => 'required|string:min:8|confirmed',
+        'password' => [
+            'required',
+            'confirmed',
+            Password::min(8)->letters()->numbers()->symbols()
+        ],
     ]);
 
     $users = User::create([
@@ -33,7 +38,7 @@ class AuthController extends Controller
         'role' => 'customer',
         'status' => 'active',
         'provider' => 'local',
-        'prodvider_id' => null,
+        'provider_id' => null,
         'avatar' => null,
         'is_2fa_enabled' => false
 
@@ -61,7 +66,7 @@ class AuthController extends Controller
 
     public function login(Request $request){
 
-    $credentials = $request -> validated([
+    $credentials = $request -> validate([
         'email' => 'required|email',
         'password' => 'required|string'
     ]);
@@ -82,7 +87,7 @@ class AuthController extends Controller
 
     $staffRoles = ['super_admin','admin', 'cashire', 'manager'];
 
-    $requiredOtp = in_array($users->role, $staffRoles) || $users->is_2fa_enables;
+    $requiredOtp = in_array($users->role, $staffRoles) || $users->is_2fa_enabled;
 
     if($requiredOtp){
 
@@ -102,6 +107,8 @@ class AuthController extends Controller
 
 
     }
+
+    $users->tokens()->delete();
 
     $token = $users->createToken('auth_token')->plainTextToken;
 
@@ -136,6 +143,7 @@ class AuthController extends Controller
 
         $users = User::findOrFail($validated['user_id']);
 
+        $users->tokens()->delete();
         $token = $users->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -177,9 +185,8 @@ class AuthController extends Controller
         if ($user) {
 
             if ($user->status !== 'active') {
-                return response()->json([
-                    'message' => 'Your account has been suspended.',
-                ], 403);
+
+               return redirect()->away("{$frontendurl}/login?error=account_suspended");
             }
 
           
@@ -203,6 +210,8 @@ class AuthController extends Controller
             ]);
         }
 
+        $user->tokens()->delete();
+
        
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -216,12 +225,174 @@ class AuthController extends Controller
         // ], 200);
 
     } catch (\Exception $e) {
+        return redirect()->away("{$frontendurl}/login?error=google_auth_failed");
+    }
+}
+
+public function redirectGithub(){
+
+        /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+
+        $driver = Socialite::driver('github');
+
+      return $driver->scopes(['user:email'])->stateless()->redirect();;
+
+
+}
+
+public function githubCallback(Request $request)
+{
+    $frontendurl = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
+
+    try {
+        /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+        $driver = Socialite::driver('github');
+
+        $githubUser = $driver->stateless()->user();
+
+        $email = $githubUser->getEmail() ? strtolower($githubUser->getEmail()) : null;
+
+        if (!$email) {
+            return redirect()->away("{$frontendurl}/login?error=github_email_not_found");
+        }
+
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            if ($user->status !== 'active') {
+                return redirect()->away("{$frontendurl}/login?error=account_suspended");
+            }
+
+            if (!$user->provider_id) {
+                $user->update([
+                    'provider'    => 'github',
+                    'provider_id' => $githubUser->getId(),
+                    'avatar'      => $user->avatar ?? $githubUser->getAvatar(),
+                ]);
+            }
+        } else {
+            $user = User::create([
+                'name'        => $githubUser->getName() ?? $githubUser->getNickname() ?? 'GitHub User',
+                'email'       => $email,
+                'password'    => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(24)), // Prevents SQL non-null password errors
+                'provider'    => 'github',
+                'provider_id' => $githubUser->getId(),
+                'avatar'      => $githubUser->getAvatar(),
+                'role'        => 'customer',
+                'status'      => 'active',
+            ]);
+        }
+
+   
+        $user->tokens()->delete();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return redirect()->away("{$frontendurl}/auth/callback?token={$token}&user_id={$user->id}");
+
+    } catch (\Exception $e) {
+        return redirect()->away("{$frontendurl}/login?error=github_auth_failed");
+    }
+}
+
+
+public function logout(Request $request){
+
+    try{
+
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json([
+        'message' => "logout success"
+    ], 200);
+
+    }catch(Exception $e){
+
+    return response()->json([
+        'message' => "failed to logout",
+        'error' => $e->getMessage()
+    ], 500);
+
+    }
+}
+
+public function redirectFacebook(){
+
+  /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+
+  $driver = Socialite::driver('facebook');
+
+  return $driver->scopes(['email'])->stateless()->redirect();
+
+
+}
+
+public function facebookCallback(Request $request)
+{
+    try {
+        /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
+        $driver = Socialite::driver('facebook');
+
+        $facebookUser = $driver->stateless()->user();
+
+        $email = $facebookUser->getEmail() ? strtolower($facebookUser->getEmail()) : null;
+
+        if (!$email) {
+            return response()->json([
+                'message' => 'Facebook account must have an email associated with it',
+            ], 422);
+        }
+
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            // Check status first
+            if ($user->status !== 'active') {
+                return response()->json([
+                    'message' => 'Your account has been suspended',
+                ], 403);
+            }
+
+            // Update provider info if missing
+            if (!$user->provider_id) {
+                $user->update([
+                    'provider'    => 'facebook',
+                    'provider_id' => $facebookUser->getId(), // Fixed getId() case
+                    'avatar'      => $user->avatar ?? $facebookUser->getAvatar(),
+                ]);
+            }
+        } else {
+            // Create user if account doesn't exist
+            $user = User::create([
+                'name'        => $facebookUser->getName() ?? 'Facebook User',
+                'email'       => $email,
+                'password'    => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(24)),
+                'provider'    => 'facebook',
+                'provider_id' => $facebookUser->getId(),
+                'avatar'      => $facebookUser->getAvatar(),
+                'role'        => 'customer',
+                'status'      => 'active',
+            ]);
+        }
+
+        // Revoke existing tokens and create a new one
+        $user->tokens()->delete();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
-            'message' => 'Failed to authenticate with Google',
+            'message'      => 'Login with Facebook success',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'user'         => $user,
+        ], 200);
+
+    } catch (\Exception $e) { // Fixed \Exception class import
+        return response()->json([
+            'message' => 'Failed to login with Facebook',
             'error'   => $e->getMessage(),
         ], 500);
     }
 }
-    
-
 }
+
+
