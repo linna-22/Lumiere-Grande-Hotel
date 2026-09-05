@@ -28,7 +28,7 @@ export default function TopBar({ onMenuClick }) {
         </div>
 
         {/* Search: full width on desktop/tablet, icon-triggered on mobile */}
-        <div className="hidden sm:block flex-1 max-w-md">
+        {/* <div className="hidden sm:block flex-1 max-w-md">
           <div className="relative">
             <Search
               size={16}
@@ -40,16 +40,16 @@ export default function TopBar({ onMenuClick }) {
               className="w-full bg-base-800 border border-base-border rounded-xl pl-9 pr-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
             />
           </div>
-        </div>
+        </div> */}
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <button
+          {/* <button
             onClick={() => setMobileSearchOpen((v) => !v)}
             className="sm:hidden text-slate-300 hover:text-white p-1.5"
             aria-label="Search"
           >
             <Search size={20} />
-          </button>
+          </button> */}
 
           {/* <button className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold text-sm px-3 sm:px-4 py-2 rounded-2xl transition-colors">
             <Plus size={16} strokeWidth={2.5} />

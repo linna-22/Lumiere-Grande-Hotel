@@ -28,7 +28,7 @@ const navGroups = [
       // { label: 'RoomTypes', icon: BedDoubleIcon, badge: 2},
       { label: 'RoomTypes', icon: Bed},
       { label: 'Rooms', icon: BedDouble },
-      // { label: 'Guests', icon: Users },
+      { label: 'Guests', icon: Users },
     ],
   },
   {

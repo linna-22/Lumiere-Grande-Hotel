@@ -9,9 +9,12 @@ function normalizeRoomType(raw) {
       .map((f) => f.trim())
       .filter(Boolean)
   }
-  if (!Array.isArray(facilities)) facilities = []
+ if (!Array.isArray(facilities)) facilities = []
+  facilities = facilities.map((f) =>
+    typeof f === 'string' ? { id: null, name: f } : { id: f.id, name: f.name ?? f.label ?? '' }
+  )
 
-  return {
+   return {
     id: raw.id,
     name: raw.name ?? '',
     description: raw.description ?? '',

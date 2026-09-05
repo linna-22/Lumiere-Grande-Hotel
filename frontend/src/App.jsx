@@ -9,6 +9,8 @@ import VerifyOtp from './pages/auth/VerifyOtp'
 import CheckIn from './pages/checkin/CheckIn'
 import CheckOut from './pages/checkout/CheckOut'
 import Housekeeping from './pages/housekeeping/Housekeeping'
+import Guests from './pages/guests/Guests'
+
 
 // Lightweight page switcher for now — swap this for React Router once the
 // public-facing website / online booking pages are added alongside the
@@ -18,6 +20,7 @@ const pages = {
   Reservations,
   RoomTypes,
   Rooms,
+  Guests,
   Login,
   Register,
   VerifyOtp,
@@ -27,7 +30,7 @@ const pages = {
 }
 
 export default function App() {
-  const [page, setPage] = useState('Login')
+  const [page, setPage] = useState('Dashboard')
   const [navigationData, setNavigationData] = useState({})
   const Page = pages[page] || Login
 

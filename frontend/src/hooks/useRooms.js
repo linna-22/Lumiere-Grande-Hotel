@@ -9,8 +9,7 @@ function capitalize(str = '') {
 }
 
 function normalizeRoom(apiRoom) {
-  const type = apiRoom.room_type || apiRoom.roomType || {}
-  const facilities = type.facilities || []
+  const type = apiRoom.room_type || {}
 
   return {
     id: apiRoom.id,
@@ -18,12 +17,13 @@ function normalizeRoom(apiRoom) {
     room_type_id: apiRoom.room_type_id ?? type.id ?? '',
     type: type.name || 'Unknown',
     floor: apiRoom.floor,
-    guests: type.max_occupancy ?? type.capacity ?? '-',
+    guests: apiRoom.capacity ?? '-',
     price: Number(type.base_price ?? 0),
     status: capitalize(apiRoom.status || ''),
     description: apiRoom.description || type.description || '',
     image: apiRoom.image_url || FALLBACK_IMAGE,
-    amenities: facilities.map((f) => f.name ?? f),
+    amenities: apiRoom.amenities || [],
+    facilities: type.facilities || [], // from the room's related room_type
   }
 }
 const TAB_TO_STATUS = {

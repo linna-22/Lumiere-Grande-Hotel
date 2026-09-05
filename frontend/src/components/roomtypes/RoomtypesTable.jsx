@@ -9,12 +9,13 @@ const columns = [
   'Capacity',
   'Base Price',
   'Max Occupancy',
+  'Facilities',
   'Status',
 ]
 
 const statusStyles = {
-  Active: 'bg-emerald-500/15 text-emerald-400',
-  Inactive: 'bg-rose-500/15 text-rose-400',
+  active: 'bg-emerald-500/15 text-emerald-400',
+  inactive: 'bg-rose-500/15 text-rose-400',
 }
 
 function formatAmount(n) {
@@ -70,7 +71,7 @@ export default function RoomTypesTable({ roomTypes = [], loading, error, refetch
 
       {!loading && !error && (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-sm">
+          <table className="w-full min-w-[1100px] text-sm">
             <thead>
               <tr className="border-y border-base-border text-slate-400">
                 {columns.map((col) => (
@@ -107,6 +108,26 @@ export default function RoomTypesTable({ roomTypes = [], loading, error, refetch
                   </td>
                   <td className="px-4 py-4 align-top text-slate-300 whitespace-nowrap">
                     {rt.maxOccupancy} guests
+                  </td>
+                  <td className="px-4 py-4 align-top max-w-[220px]">
+                    <div className="flex flex-wrap gap-1">
+                      {(rt.facilities ?? []).slice(0, 3).map((f) => (
+                        <span
+                          key={f.id ?? f.name}
+                          className="text-[11px] text-slate-300 bg-base-800 border border-base-border px-2 py-0.5 rounded-md whitespace-nowrap"
+                        >
+                          {f.name}
+                        </span>
+                      ))}
+                      {rt.facilities?.length > 3 && (
+                        <span className="text-[11px] text-slate-500">
+                          +{rt.facilities.length - 3} more
+                        </span>
+                      )}
+                      {(!rt.facilities || rt.facilities.length === 0) && (
+                        <span className="text-xs text-slate-600">—</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4 align-top whitespace-nowrap">
                     <span
