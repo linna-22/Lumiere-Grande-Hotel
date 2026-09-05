@@ -45,12 +45,12 @@ export default function RoomCard({ room, onEdit, onDelete }) {
         </p>
 
         <div className="flex flex-wrap gap-1.5 mt-3">
-          {(room.amenities || []).map((a) => (
+          {(room.facilities ?? []).map((f) => (
             <span
-              key={a}
+              key={f.id ?? f.name}
               className="text-xs text-slate-300 bg-base-800 border border-base-border px-2 py-1 rounded-md"
             >
-              {a}
+              {f.name}
             </span>
           ))}
         </div>

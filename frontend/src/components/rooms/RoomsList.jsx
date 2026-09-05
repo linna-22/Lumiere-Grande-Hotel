@@ -15,7 +15,7 @@ export default function RoomsList({ rooms = [], onEdit, onDelete }) {
   return (
     <div className="bg-base-850 border border-base-border rounded-xl mt-6 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="border-b border-base-border text-slate-400">
               <th className="text-left font-medium px-4 py-3">Room</th>
@@ -23,6 +23,7 @@ export default function RoomsList({ rooms = [], onEdit, onDelete }) {
               <th className="text-left font-medium px-4 py-3">Floor</th>
               <th className="text-left font-medium px-4 py-3">Guests</th>
               <th className="text-left font-medium px-4 py-3">Price</th>
+              <th className="text-left font-medium px-4 py-3">Facilities</th>
               <th className="text-left font-medium px-4 py-3">Status</th>
               <th className="text-right font-medium px-4 py-3">Actions</th>
             </tr>
@@ -34,7 +35,7 @@ export default function RoomsList({ rooms = [], onEdit, onDelete }) {
                 className="border-b border-base-border last:border-b-0 hover:bg-base-800/50 transition-colors"
               >
                 <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">
-                  Room {room.room_number}
+                  Room {room.number}
                 </td>
                 <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
                   {room.type}
@@ -47,6 +48,26 @@ export default function RoomsList({ rooms = [], onEdit, onDelete }) {
                 </td>
                 <td className="px-4 py-3 text-amber-400 font-semibold whitespace-nowrap">
                   {formatPrice(room.price)}/night
+                </td>
+                <td className="px-4 py-3 max-w-[200px]">
+                  <div className="flex flex-wrap gap-1">
+                    {(room.facilities ?? []).slice(0, 2).map((f) => (
+                      <span
+                        key={f.id ?? f.name}
+                        className="text-[11px] text-slate-300 bg-base-800 border border-base-border px-2 py-0.5 rounded-md whitespace-nowrap"
+                      >
+                        {f.name}
+                      </span>
+                    ))}
+                    {room.facilities?.length > 2 && (
+                      <span className="text-[11px] text-slate-500">
+                        +{room.facilities.length - 2}
+                      </span>
+                    )}
+                    {(!room.facilities || room.facilities.length === 0) && (
+                      <span className="text-xs text-slate-600">—</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <span
@@ -79,7 +100,7 @@ export default function RoomsList({ rooms = [], onEdit, onDelete }) {
             {rooms.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-10 text-center text-slate-500"
                 >
                   No rooms match this filter.

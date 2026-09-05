@@ -18,7 +18,7 @@ const emptyForm = {
 }
 
 export default function RoomFormModal({ room, onClose, onSuccess }) {
-  const { roomTypes, loading: loadingTypes } = useRoomTypes()
+  const { roomTypes, loading: loadingTypes } = useRoomTypes({ perPage: 100 })
   const isEditMode = Boolean(room)
 
   const [form, setForm] = useState(emptyForm)
