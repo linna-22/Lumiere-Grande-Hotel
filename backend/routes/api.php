@@ -54,9 +54,9 @@ Route::get('/login', function () {
 Route::middleware('auth:sanctum')->group(function () {
 
     // Authenticated User Profile
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
+    // Route::get('/user', function (Request $request) {
+    //     return $request->user();
+    // });
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
