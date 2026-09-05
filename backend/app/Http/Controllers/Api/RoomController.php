@@ -93,8 +93,6 @@ class RoomController extends Controller
         
         ], 200);
 
-
-        
     }
 
     /**
@@ -105,11 +103,11 @@ class RoomController extends Controller
 
     try{
 
-    $room = Rooms::find($id);
+    $room = Rooms::findOrFail($id);
 
      $data = $request->validated();
 
-        if($request->hasfile('image')){
+        if($request->hasFile('image')){
 
         if($room->cloudinary_id) {
 

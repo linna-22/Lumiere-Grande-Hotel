@@ -170,7 +170,7 @@ class AuthController extends Controller
     public function GoogleCallback(Request $request)
 {
 
-    $frontendurl = env('FRONTEND_URL', 'http://localhost:3000');
+    $frontendurl = env('FRONTEND_URL', 'http://localhost:5173');
 
 
     try {
