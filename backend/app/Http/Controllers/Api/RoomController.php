@@ -50,7 +50,6 @@ class RoomController extends Controller
     ]);
     // $rooms = Rooms::with('roomType.facilities')->latest()->get();
 
-  
 
     }
 

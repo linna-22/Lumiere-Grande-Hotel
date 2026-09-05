@@ -16,65 +16,61 @@ use Illuminate\Support\Facades\Route;
 
 // Public Read-Only Routes
 // Public Read-Only & CRUD Routes (Unprotected for Pre-Demo)
-Route::get('/room-types', [RoomTypeController::class, 'index']);
-Route::get('/room-types/{roomType}', [RoomTypeController::class, 'show']);
-Route::post('/room-types', [RoomTypeController::class, 'store']);
-Route::put('/room-types/{roomType}', [RoomTypeController::class, 'update']);
-Route::delete('/room-types/{roomType}', [RoomTypeController::class, 'destroy']);
+Route::get('/login', function () {
+    return response()->json(['message' => 'Unauthenticated.'], 401);
+})->name('login');
 
-Route::get('/rooms', [RoomController::class, 'index'])->name('rooms');
+// Room Types (Unprotected for Pre-Demo)
+Route::apiResource('room-types', RoomTypeController::class);
+
+// Rooms (Unprotected for Pre-Demo)
+Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
 Route::get('/rooms/{id}', [RoomController::class, 'show'])->name('rooms.show');
-Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
-Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
+Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
+Route::put('/rooms/{id}', [RoomController::class, 'update'])->name('rooms.update');
 Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
 // Rate-Limited Authentication Routes (Max 10 requests per minute)
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
-    Route::post('/login', [AuthController::class, 'login']); 
+    Route::post('/login', [AuthController::class, 'login'])->name('api.login'); 
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify.otp');
 });
 
-// Google OAuth Routes
-Route::get('/auth/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
-Route::get('/auth/google/callback', [AuthController::class, 'GoogleCallback'])->name('google.callback');
+// OAuth Routes (Google, GitHub, Facebook)
+Route::prefix('auth')->group(function () {
+    Route::get('/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
+    Route::get('/google/callback', [AuthController::class, 'googleCallback'])->name('auth.google.callback');
 
-// GitHub OAuth Routes
-Route::get('/auth/github', [AuthController::class, 'redirectGithub'])->name('auth.github');
-Route::get('/auth/github/callback', [AuthController::class, 'githubCallback'])->name('github.callback');
+    Route::get('/github', [AuthController::class, 'redirectGithub'])->name('auth.github');
+    Route::get('/github/callback', [AuthController::class, 'githubCallback'])->name('auth.github.callback');
 
-// Facebook OAuth Routes
-Route::get('/auth/facebook', [AuthController::class, 'redirectFacebook'])->name('auth.facebook');
-Route::get('/auth/facebook/callback', [AuthController::class, 'facebookCallback'])->name('facebook.callback');
+    Route::get('/facebook', [AuthController::class, 'redirectFacebook'])->name('auth.facebook');
+    Route::get('/facebook/callback', [AuthController::class, 'facebookCallback'])->name('auth.facebook.callback');
+});
 
-// Fallback JSON route when Sanctum blocks an unauthenticated request
-Route::get('/login', function () {
-    return response()->json(['message' => 'Unauthenticated.'], 401);
-})->name('login');
-
-// Facilities Endpoint
+// Public Facilities Endpoint
 Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
-
 
 /*
 |--------------------------------------------------------------------------
-| Protected Routes (Requires Bearer Token)
+| Protected Routes (Requires Sanctum Bearer Token)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Logout
+    // Auth Actions
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Guest Profile Management
+    // Guest Profile
     Route::get('/guest/profile', [GuestController::class, 'showProfile'])->name('guest.profile');
-    Route::put('/guest/profile', [GuestController::class, 'updateProfile']);
+    Route::put('/guest/profile', [GuestController::class, 'updateProfile'])->name('guest.profile.update');
 
     // Admin & Staff Operations
-    Route::middleware('role:admin,receptionist')->group(function () {
-        Route::get('/admin/guests', [GuestController::class, 'index']);
-        Route::post('/admin/guests/walk-in', [GuestController::class, 'storeWalkIn']);
-        Route::get('/admin/guests/{id}', [GuestController::class, 'show']);
+    Route::middleware('role:admin,receptionist')->prefix('admin')->group(function () {
+        Route::get('/guests', [GuestController::class, 'index'])->name('admin.guests.index');
+        Route::post('/guests/walk-in', [GuestController::class, 'storeWalkIn'])->name('admin.guests.walkin');
+        Route::get('/guests/{id}', [GuestController::class, 'show'])->name('admin.guests.show');
     });
 
 });
