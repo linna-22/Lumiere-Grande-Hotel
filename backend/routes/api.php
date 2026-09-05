@@ -26,7 +26,7 @@ Route::apiResource('room-types', RoomTypeController::class);
 // Rooms (Unprotected for Pre-Demo)
 Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
 Route::get('/rooms/{id}', [RoomController::class, 'show'])->name('rooms.show');
-Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
+Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
 Route::put('/rooms/{id}', [RoomController::class, 'update'])->name('rooms.update');
 Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
