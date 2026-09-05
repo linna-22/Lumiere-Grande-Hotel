@@ -162,7 +162,7 @@ export default function Sidebar({ open, onClose, active = 'Dashboard', onNavigat
           <a
             href="#"
             title={collapsed ? 'Logout' : undefined}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-base-800 hover:text-slate-200 transition-colors ${
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-red-600 hover:text-white transition-colors ${
               collapsed ? 'justify-center' : ''
             }`}
           >

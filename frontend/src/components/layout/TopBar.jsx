@@ -1,8 +1,31 @@
-import { useState } from "react";
-import { Cloud, Search, Plus, ChevronDown, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Cloud, Search, Plus, ChevronDown, Menu, X, User, LogOut } from "lucide-react";
 
-export default function TopBar({ onMenuClick }) {
+export default function TopBar({ onMenuClick, onNavigate }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleViewProfile() {
+    setProfileMenuOpen(false);
+    onNavigate?.("Profile");
+  }
+
+  function handleLogout() {
+    setProfileMenuOpen(false);
+    // TODO: call POST /api/logout once wired to real auth, then onNavigate?.('Login')
+    console.log("Logout clicked");
+  }
 
   return (
     <header className="border-b border-base-border bg-base-900 sticky top-0 z-20">
@@ -27,45 +50,48 @@ export default function TopBar({ onMenuClick }) {
           </div>
         </div>
 
-        {/* Search: full width on desktop/tablet, icon-triggered on mobile */}
-        {/* <div className="hidden sm:block flex-1 max-w-md">
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            />
-            <input
-              type="text"
-              placeholder="Search guests, rooms, bookings..."
-              className="w-full bg-base-800 border border-base-border rounded-xl pl-9 pr-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
-            />
-          </div>
-        </div> */}
-
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* <button
-            onClick={() => setMobileSearchOpen((v) => !v)}
-            className="sm:hidden text-slate-300 hover:text-white p-1.5"
-            aria-label="Search"
-          >
-            <Search size={20} />
-          </button> */}
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setProfileMenuOpen((v) => !v)}
+              className="flex items-center gap-2 pl-1 sm:pl-2 rounded-lg hover:bg-base-800 transition-colors py-1 pr-2"
+            >
+              <img
+                src="https://i.pinimg.com/1200x/36/9d/8c/369d8c1a01f21c357fd77dd6538eaea5.jpg"
+                alt="Lina Oeu"
+                className="w-9 h-9 rounded-full object-cover border border-base-border"
+              />
+              <div className="leading-tight hidden xl:block text-left">
+                <p className="text-sm font-semibold text-white">Lina Oeu</p>
+                <p className="text-[11px] text-amber-400">Developer</p>
+              </div>
+              <ChevronDown
+                size={14}
+                className={`text-slate-400 hidden xl:block transition-transform ${
+                  profileMenuOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
 
-          {/* <button className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold text-sm px-3 sm:px-4 py-2 rounded-2xl transition-colors">
-            <Plus size={16} strokeWidth={2.5} />
-            <span className="hidden sm:inline">New Reservation</span>
-          </button> */}
-
-          <div className="flex items-center gap-2 pl-1 sm:pl-2">
-            <img
-              src="https://i.pinimg.com/1200x/36/9d/8c/369d8c1a01f21c357fd77dd6538eaea5.jpg"
-              alt="Roberto Cruz"
-              className="w-9 h-9 rounded-full object-cover border border-base-border"
-            />
-            <div className="leading-tight hidden xl:block">
-              <p className="text-sm font-semibold text-white">Lina Oeu</p>
-              <p className="text-[11px] text-amber-400">Developer</p>
-            </div>
+            {profileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-base-850 border border-base-border rounded-xl shadow-lg overflow-hidden py-1.5 z-30">
+                <button
+                  onClick={handleViewProfile}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-base-800 transition-colors"
+                >
+                  <User size={15} />
+                  View Profile
+                </button>
+                <div className="h-px bg-base-border my-1" />
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                >
+                  <LogOut size={15} />
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
