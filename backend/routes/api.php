@@ -20,15 +20,12 @@ Route::get('/login', function () {
     return response()->json(['message' => 'Unauthenticated.'], 401);
 })->name('login');
 
-// Room Types (Unprotected for Pre-Demo)
-Route::apiResource('room-types', RoomTypeController::class);
-
-// Rooms (Unprotected for Pre-Demo)
+// Public Browse Endpoints (Read-Only)
 Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
 Route::get('/rooms/{id}', [RoomController::class, 'show'])->name('rooms.show');
-Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
-Route::put('/rooms/{id}', [RoomController::class, 'update'])->name('rooms.update');
-Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
+Route::get('/room-types', [RoomTypeController::class, 'index'])->name('room-types.index');
+Route::get('/room-types/{id}', [RoomTypeController::class, 'show'])->name('room-types.show');
+Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
 
 // Rate-Limited Authentication Routes (Max 10 requests per minute)
 Route::middleware('throttle:10,1')->group(function () {
@@ -49,9 +46,6 @@ Route::prefix('auth')->group(function () {
     Route::get('/facebook/callback', [AuthController::class, 'facebookCallback'])->name('auth.facebook.callback');
 });
 
-// Public Facilities Endpoint
-Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
-
 /*
 |--------------------------------------------------------------------------
 | Protected Routes (Requires Sanctum Bearer Token)
@@ -59,18 +53,38 @@ Route::get('/facilities', [FacilityController::class, 'index'])->name('facilitie
 */
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Auth Actions
+    // Authenticated User Info & Actions
+    Route::get('/user', function (Request $request) {
+        return response()->json([
+            'status' => 'success',
+            'data' => $request->user()
+        ]);
+    })->name('user.me');
+
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Guest Profile
+    // Guest Profile Management
     Route::get('/guest/profile', [GuestController::class, 'showProfile'])->name('guest.profile');
     Route::put('/guest/profile', [GuestController::class, 'updateProfile'])->name('guest.profile.update');
 
-    // Admin & Staff Operations
+    // Admin & Staff Operations (Role Restricted)
     Route::middleware('role:admin,receptionist')->prefix('admin')->group(function () {
+        
+        // Guest Management
         Route::get('/guests', [GuestController::class, 'index'])->name('admin.guests.index');
         Route::post('/guests/walk-in', [GuestController::class, 'storeWalkIn'])->name('admin.guests.walkin');
         Route::get('/guests/{id}', [GuestController::class, 'show'])->name('admin.guests.show');
+
+        // Room Management (Protected CRUD)
+        Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
+        Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
+
+        Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
+
+        // Room Type Management (Protected CRUD)
+        Route::post('/room-types', [RoomTypeController::class, 'store'])->name('room-types.store');
+        Route::put('/room-types/{id}', [RoomTypeController::class, 'update'])->name('room-types.update');
+        Route::delete('/room-types/{id}', [RoomTypeController::class, 'destroy'])->name('room-types.destroy');
     });
 
 });

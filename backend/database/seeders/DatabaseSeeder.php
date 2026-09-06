@@ -13,5 +13,15 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
+
+    public function run(): void
+    {
+        // Call your individual seeders here
+        $this->call([
+            RoomTypeSeeder::class,
+            RoomSeeder::class,
+            // Add any other seeders you have here (e.g., UserSeeder::class)
+        ]);
+    }
    
 }
