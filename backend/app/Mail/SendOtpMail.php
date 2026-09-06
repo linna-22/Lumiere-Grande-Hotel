@@ -15,15 +15,21 @@ class SendOtpMail extends Mailable
 
     /**
      * Create a new message instance.
+     * * @param string|int $otpCode
+     * @param string $type ('reset' or 'login')
      */
 
     public $otpCode;
+    public $type;
 
-    public function __construct($otpCode)
+    
+
+    public function __construct($otpCode, string $type = 'login')
     {
         //
 
         $this->otpCode = $otpCode;
+        $this->type = $type;
     }
 
     /**
@@ -31,8 +37,12 @@ class SendOtpMail extends Mailable
      */
     public function envelope(): Envelope
     {
+        $subject = $this->type === 'reset' 
+            ? 'Password Reset Verification Code' 
+            : 'Your Admin Login OTP Code';
+
         return new Envelope(
-            subject: 'Send Otp Mail',
+            subject: $subject,
         );
     }
 

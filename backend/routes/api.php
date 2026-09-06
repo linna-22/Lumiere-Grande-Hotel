@@ -88,3 +88,13 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 });
+
+Route::middleware('throttle:5,1')->group(function() {
+
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+
+    Route::post('/verify-reset-otp', [AuthController::class, 'verifyResetOtp']);
+
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+});
