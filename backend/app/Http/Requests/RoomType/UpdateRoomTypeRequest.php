@@ -27,17 +27,17 @@ class UpdateRoomTypeRequest extends FormRequest
 
         'description'=> 'nullable| string | max:255',
 
-        'capacity' => 'sometimes| required | integer | min 1',
+        'capacity' => 'sometimes| required | integer | min:1',
 
-        'base_price' => 'sometimes | required | numberic | min 0',
+        'base_price' => 'sometimes | required | numeric | min:0',
 
-        'max_occupancy' => 'sometimes | required | numberic min1',
+        'max_occupancy' => 'sometimes | required | numeric min:1',
 
         'status' => 'sometimes | required | string | in:active, inactive',
 
-        'facilities_ids' => 'nullable|array',
+        'facility_ids' => 'nullable|array',
         
-        'facilities_ids*' => 'exists:facilities,id'
+        'facility_ids*' => 'exists:facility_ids,id'
         
         
         ];
