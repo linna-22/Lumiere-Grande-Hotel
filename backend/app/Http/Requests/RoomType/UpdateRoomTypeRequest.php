@@ -23,21 +23,22 @@ class UpdateRoomTypeRequest extends FormRequest
     {
         return [
             
-        'name' => 'sometimes | string | max:255',
-
-        'description'=> 'nullable| string | max:255',
-
-        'capacity' => 'sometimes| required | integer | min 1',
-
-        'base_price' => 'sometimes | required | numberic | min 0',
-
-        'max_occupancy' => 'sometimes | required | numberic min1',
-
-        'status' => 'sometimes | required | string | in:active, inactive',
-
-        'facilities_ids' => 'nullable|array',
+       'name' => 'sometimes|string|max:255',
+        'description' => 'nullable|string|max:255',
+        'capacity' => 'sometimes|integer|min:1',
+        'base_price' => 'sometimes|numeric|min:0',
         
-        'facilities_ids*' => 'exists:facilities,id'
+        // 1. Fixed typo: added missing pipe '|' between numeric and min:1
+        'max_occupancy' => 'sometimes|numeric|min:1', 
+
+        // 2. Fixed spaces in values: 'in:active,inactive' instead of 'in:active, inactive'
+        'status' => 'sometimes|string|in:active,inactive',
+
+        'facility_ids' => 'nullable|array',
+        
+        // 3. Fixed array wildcard notation and database table name
+        // 'facility_ids.*' (dot added) and 'exists:facilities,id' (table name is usually facilities)
+        'facility_ids.*' => 'exists:facilities,id',
         
         
         ];
