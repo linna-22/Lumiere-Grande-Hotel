@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Guest; // Fixed: Singular model convention
 use App\Models\Guests;
 use Illuminate\Http\Request;

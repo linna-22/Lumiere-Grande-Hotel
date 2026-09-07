@@ -3,8 +3,9 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RoomTypeController;
-use App\Http\Controllers\FacilityController;
-use App\Http\Controllers\GuestController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\FacilityController;
+use App\Http\Controllers\Api\GuestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -28,7 +29,7 @@ Route::get('/room-types/{id}', [RoomTypeController::class, 'show'])->name('room-
 Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
 
 // Rate-Limited Authentication Routes (Max 10 requests per minute)
-Route::middleware('throttle:10,1')->group(function () {
+Route::middleware('throttle:5,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login'); 
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify.otp');
@@ -54,14 +55,16 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
 
     // Authenticated User Info & Actions
-    Route::get('/user', function (Request $request) {
-        return response()->json([
-            'status' => 'success',
-            'data' => $request->user()
-        ]);
-    })->name('user.me');
+    Route::prefix('user')->group(function () {
+        Route::get('/me', [UserController::class, 'me'])->name('user.me');
+        Route::put('/change-password', [UserController::class, 'changePassword'])->name('user.change_password');
+        
+        // Customer Profile Endpoints
+        Route::get('/profile', [GuestController::class, 'showProfile'])->name('guest.profile');
+        Route::put('/profile', [GuestController::class, 'updateProfile'])->name('guest.profile.update');
+    });
 
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
     // Guest Profile Management
     Route::get('/guest/profile', [GuestController::class, 'showProfile'])->name('guest.profile');
@@ -82,9 +85,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
         // Room Type Management (Protected CRUD)
-        Route::post('/room-types', [RoomTypeController::class, 'store'])->name('room-types.store');
-        Route::put('/room-types/{id}', [RoomTypeController::class, 'update'])->name('room-types.update');
-        Route::delete('/room-types/{id}', [RoomTypeController::class, 'destroy'])->name('room-types.destroy');
+        Route::post('/room-types/create', [RoomTypeController::class, 'store'])->name('room-types.store');
+        Route::put('/room-types/{room_types}', [RoomTypeController::class, 'update'])->name('room-types.update');
+        Route::delete('/room-types/{room_types}', [RoomTypeController::class, 'destroy'])->name('room-types.destroy');
     });
 
 });
@@ -98,3 +101,4 @@ Route::middleware('throttle:5,1')->group(function() {
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 });
+

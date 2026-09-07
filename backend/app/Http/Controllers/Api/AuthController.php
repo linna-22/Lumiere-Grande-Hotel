@@ -10,12 +10,29 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SendOtpMail;
+use App\Models\Guests;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
     //
+
+    private function ensureGuestProfileExists(User $user): void {
+
+    if($user->role === 'customer' && $user->guest){
+
+    $nameParts = explode(' ', $user->name, 2);
+
+    Guests::create([
+        'user_id' => $user->id,
+        'first_name' => $nameParts[0] ?? $user->name,
+        'last_name'  => $nameParts[1] ?? '',
+        'phone'      => $user->phone ?? null,
+    ]);
+
+    }
+    }
 
     public function register(Request $request)
     {
@@ -90,9 +107,9 @@ class AuthController extends Controller
 
             $otpCode = random_int(100000, 999999);
 
-            Cache::put("otp_{$users->id}", $otpCode, now()->addMinutes(3));
+            Cache::put("otp_{$users->email}", $otpCode, now()->addMinutes(3));
 
-            Mail::to($users->email)->send(new SendOtpMail($otpCode))->subject('Your login 2fa verification code');
+            Mail::to($users->email)->send(new SendOtpMail($otpCode, 'login'));
 
             return response()->json([
                 'requires_2fa' => true,
@@ -118,22 +135,61 @@ class AuthController extends Controller
     {
 
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'otp_code' => 'required|numeric'
+            'email' => 'required|exists:users,email',
+            'otp_code' => 'required|numeric|digits:6'
         ]);
 
-        $cachedOtp = Cache::get("otp_{$validated['user_id']}");
+        $email = strtolower($validated['email']);
+        $cacheKey = "otp_{$email}";
+        $attemptsKey = "otp_attempts_{$email}";
 
-        if (!$cachedOtp || $cachedOtp != $validated['otp_code']) {
+        $cachedOtp = Cache::get($cacheKey);
 
+        if (!$cachedOtp) {
             return response()->json([
-                'message' => "Invaild otp code",
+                'message' => 'OTP code has expired or was not requested.',
             ], 422);
         }
 
-        Cache::forget("otp_{$validated['user_id']}");
+        // $user = User::where(
+        //     'email', strtolower($request->email)
+        // )->firstOrFail();
 
-        $users = User::findOrFail($validated['user_id']);
+        if ($cachedOtp !=  $validated['otp_code']) {
+            $attempts = Cache::increment($attemptsKey);
+
+            if ($attempts >= 3) {
+                Cache::forget($cacheKey);
+                Cache::forget($attemptsKey);
+
+                return response()->json([
+                    'message' => 'Too many failed attempts. Your OTP has been invalidated. Please request a new code.',
+                ], 429);
+            }
+
+            $remaining = 3 - $attempts;
+            return response()->json([
+                'message' => "Invalid OTP code. You have {$remaining} attempt(s) remaining.",
+            ], 422);
+        }
+
+        Cache::forget($cacheKey);
+        Cache::forget($attemptsKey);
+
+        $users = User::where('email', $email)->firstOrFail();
+
+        if($users->role === 'customer' && !$users->guest){
+
+        $nameParts = explode('', $users->name, 2);
+
+        Guests::create([
+            'user_id' => $users->id,
+            'first_name' => $nameParts[0] ?? $users->name,
+            'last_name' => $nameParts[1] ?? '',
+            'phone' => $users->phone ?? null
+        ]);
+
+        }
 
         $users->tokens()->delete();
         $token = $users->createToken('auth_token')->plainTextToken;
@@ -482,7 +538,7 @@ class AuthController extends Controller
         ]);
 
         Cache::forget($cacheKey);
-        Cache::forget('otp_attempts_' . $email);
+        Cache::forget("otp_attempts_{$email}");
         $user->tokens()->delete();
 
         return response()->json([
