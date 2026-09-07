@@ -45,7 +45,7 @@ export default function RoomTypesTable({ roomTypes = [], loading, error, refetch
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
+            placeholder="Search By Name..."
             disabled={loading}
             className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400/50 disabled:opacity-50"
           />

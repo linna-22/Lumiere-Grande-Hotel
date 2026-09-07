@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { Cloud, Search, Plus, ChevronDown, Menu, X, User, LogOut } from "lucide-react";
+import {
+  Cloud,
+  Search,
+  Plus,
+  ChevronDown,
+  Menu,
+  X,
+  User,
+  LogOut,
+} from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function TopBar({ onMenuClick, onNavigate }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef(null);
+  const { logout } = useAuth();
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -21,10 +32,15 @@ export default function TopBar({ onMenuClick, onNavigate }) {
     onNavigate?.("Profile");
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     setProfileMenuOpen(false);
-    // TODO: call POST /api/logout once wired to real auth, then onNavigate?.('Login')
-    console.log("Logout clicked");
+    try {
+      await logout();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
+      onNavigate?.("Login");
+    }
   }
 
   return (
