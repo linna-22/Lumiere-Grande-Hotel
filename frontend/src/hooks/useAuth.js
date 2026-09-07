@@ -28,7 +28,11 @@ export function useAuth() {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    setUser(data.user ?? data)
+    // Only set the authenticated user when login actually completed —
+    // when requires_2fa is true, there's no user/token yet.
+    if (data.access_token) {
+      setUser(data.user)
+    }
     return data
   }, [])
 
@@ -42,11 +46,20 @@ export function useAuth() {
     setUser(data.user ?? data)
     return data
   }, [])
+  const verifyOtp = useCallback(async ({ email, otp }) => {
+    setError(null)
+    const data = await apiFetch('/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    })
+    setUser(data.user ?? data)
+    return data
+  }, [])
 
   const logout = useCallback(async () => {
     await apiFetch('/logout', { method: 'POST' })
     setUser(null)
   }, [])
 
-  return { user, loading, error, login, register, logout, checkSession, isAuthenticated: Boolean(user) }
+  return { user, loading, error, login, register, verifyOtp, logout, checkSession, isAuthenticated: Boolean(user) }
 }

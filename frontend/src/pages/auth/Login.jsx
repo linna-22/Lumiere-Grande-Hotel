@@ -227,7 +227,7 @@ export default function Login({ onNavigate }) {
             </button>
           </form>
 
-          <p className="text-sm text-slate-400 text-center mt-6">
+          {/* <p className="text-sm text-slate-400 text-center mt-6">
             Don't have an account?{" "}
             <button
               onClick={() => onNavigate?.("Register")}
@@ -235,7 +235,7 @@ export default function Login({ onNavigate }) {
             >
               Create one
             </button>
-          </p>
+          </p> */}
         </div>
       </div>
       {errors.general && (
