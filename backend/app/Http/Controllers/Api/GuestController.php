@@ -2,13 +2,35 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\GuestsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Guest; // Fixed: Singular model convention
 use App\Models\Guests;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class GuestController extends Controller
 {
+
+    public function exportExcel(){
+
+    try{
+
+    
+    $fileName = 'lumiere_hotel_guests_' . now()->format('Y_m_d_His') . '.xlsx';
+
+    return Excel::download(new GuestsExport, $fileName);
+
+    }catch(\Exception $e){
+
+    return response()->json([
+        'message' => 'Error' .$e,
+
+    ], 500);
+    }
+
+
+    }
     public function showProfile(Request $request)
     {
         $guest = $request->user()->guest;
@@ -32,10 +54,11 @@ class GuestController extends Controller
         $validated = $request->validate([
             'first_name'  => 'sometimes|string|max:100',
             'last_name'   => 'sometimes|string|max:100',
+            'email' => 'sometimes|email|unique:users,email|max:255',
             'phone'       => 'sometimes|string|max:20',
             'address'     => 'nullable|string',
-            'id_type'     => 'nullable|string|max:50',
-            'id_number'   => 'nullable|string|max:50',
+            'indentification_type'     => 'nullable|string|max:155',
+            'indentification_number'   => 'nullable|string|max:155',
             'nationality' => 'nullable|string|max:50',
         ]);
 
@@ -64,7 +87,6 @@ class GuestController extends Controller
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
-
                   ->orWhereHas('user', function($uq) use ($search) {
 
                   $uq->where('email', 'like', "%{$search}");
@@ -86,8 +108,8 @@ class GuestController extends Controller
             'email'       => 'nullable|email|unique:guests,email',
             'phone'       => 'required|string|max:20',
             'address'     => 'nullable|string',
-            'id_type'     => 'nullable|string|max:50',
-            'id_number'   => 'nullable|string|max:50',
+            'indentification_type'     => 'nullable|string|max:155',
+            'identification_number'   => 'nullable|string|max:155',
             'nationality' => 'nullable|string|max:50',
         ]);
 
