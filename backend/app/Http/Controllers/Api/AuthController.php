@@ -20,7 +20,7 @@ class AuthController extends Controller
 
     private function ensureGuestProfileExists(User $user): void {
 
-    if($user->role === 'customer' && $user->guest){
+    if($user->role === 'customer' && !$user->guest){
 
     $nameParts = explode(' ', $user->name, 2);
 
@@ -62,12 +62,14 @@ class AuthController extends Controller
 
             ]);
 
+            $this->ensureGuestProfileExist($users);
+
             $token = $users->createToken('auth_token')->plainTextToken;
 
             return response()->json([
                 'message' => "user account create successfully",
                 'token_type' => 'Bearer',
-                'user' => $users
+                'user' => $users->load('guest')
             ], 200);
         } catch (Exception $e) {
 
@@ -118,7 +120,9 @@ class AuthController extends Controller
                 'dev_otp' => $otpCode
             ], 200);
         }
-
+        
+        $this->ensureGuestProfileExists($users);
+        
         $users->tokens()->delete();
 
         $token = $users->createToken('auth_token')->plainTextToken;
@@ -127,7 +131,7 @@ class AuthController extends Controller
             'message' => "login success",
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $users
+            'user' => $users->load('guest')
         ], 200);
     }
 

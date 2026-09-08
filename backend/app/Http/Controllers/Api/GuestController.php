@@ -17,12 +17,13 @@ class GuestController extends Controller
             return response()->json(['message' => 'Guest profile not found.'], 404);
         }
 
-        return response()->json(['data' => $guest], 200);
+        return response()->json(['data' => $guest->load('user')], 200);
     }
 
     public function updateProfile(Request $request)
     {
-        $guest = $request->user()->guest;
+        $user = $request->user();
+        $guest = $request->$user->guest;
 
         if (!$guest) {
             return response()->json(['message' => 'Guest profile not found.'], 404);
@@ -40,6 +41,14 @@ class GuestController extends Controller
 
         $guest->update($validated);
 
+        if(isset($validated['first_name']) || isset($validated['last_name'])) {
+
+        $user->update([
+            'name' => trim(($validated['first_name'] ?? $guest->first_name). ' ' .($validated['last_name'] ?? $guest->last_name))
+        ]);
+
+        }
+
         return response()->json([
             'message' => 'Guest profile updated successfully.',
             'data'    => $guest
@@ -48,18 +57,22 @@ class GuestController extends Controller
 
     public function index(Request $request)
     {
-        $query = Guests::query();
+        $query = Guests::with('user');
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                  ->orWhere('phone', 'like', "%{$search}%")
+
+                  ->orWhereHas('user', function($uq) use ($search) {
+
+                  $uq->where('email', 'like', "%{$search}");
+
+                  });
             });
         }
 
-        // Fixed: Executed pagination and added return statement
         $guests = $query->latest()->paginate(15);
 
         return response()->json($guests, 200);
@@ -88,7 +101,7 @@ class GuestController extends Controller
 
     public function show($id)
     {
-        $guest = Guests::with('bookings.room')->find($id);
+        $guest = Guests::with('user', 'bookings.room')->find($id);
 
         if (!$guest) {
             return response()->json(['message' => 'Guest not found.'], 404);
