@@ -62,7 +62,7 @@ class AuthController extends Controller
 
             ]);
 
-            $this->ensureGuestProfileExist($users);
+            $this->ensureGuestProfileExists($users);
 
             $token = $users->createToken('auth_token')->plainTextToken;
 
