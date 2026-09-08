@@ -77,11 +77,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/user/create', [UserController::class, 'store'])->name('admin.user.store');
         Route::get('user/{id}', [UserController::class, 'show'])->name('admin.user.show');
         Route::put('user/update/{id}', [UserController::class, 'update'])->name('admin.user.update');
-        Route::delete('user/delete', [UserController::class, 'destory'])->name('admin.user.destory');
-        
+        Route::delete('user/delete/{id}', [UserController::class, 'destroy'])->name('admin.user.destory');
+
         // Guest Management
         Route::get('/guests', [GuestController::class, 'index'])->name('admin.guests.index');
-        Route::post('/guests/walk-in', [GuestController::class, 'storeWalkIn'])->name('admin.guests.walkin');
+        Route::post('/guests/walkIn', [GuestController::class, 'storeWalkIn'])->name('admin.guests.walkIn');
         Route::get('/guests/{id}', [GuestController::class, 'show'])->name('admin.guests.show');
 
         // Room Management (Protected CRUD)
