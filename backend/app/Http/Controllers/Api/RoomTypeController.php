@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\RoomTypesExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RoomType\IndexRoomTypeRequest;
 use App\Http\Requests\RoomType\StoreRoomTypeRequest;
@@ -11,6 +12,7 @@ use App\Models\Facility;
 use App\Models\Room_types;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 class RoomTypeController extends Controller
@@ -18,6 +20,24 @@ class RoomTypeController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+    public function exportExcel(){
+    
+    try{
+    $fileName = 'lumiere_hotel_room_types_' . now()->format('Y_m_d_His') . '.xlsx';
+
+    return Excel::download(new RoomTypesExport, $fileName);
+
+    }catch(\Exception $e){
+
+    return response()->json([
+        'message' => 'Error' .$e,
+
+    ], 500);
+    
+    }
+
+    }
     
     public function index(IndexRoomTypeRequest $request) : JsonResponse
     {

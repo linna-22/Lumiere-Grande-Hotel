@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
+use App\Models\Guests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -80,17 +81,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('user/delete/{id}', [UserController::class, 'destroy'])->name('admin.user.destory');
 
         // Guest Management
+        Route::get('/guests/export/excel', [GuestController::class, 'exportExcel'])->name('admin.guests.export.excel');
         Route::get('/guests', [GuestController::class, 'index'])->name('admin.guests.index');
         Route::post('/guests/walkIn', [GuestController::class, 'storeWalkIn'])->name('admin.guests.walkIn');
         Route::get('/guests/{id}', [GuestController::class, 'show'])->name('admin.guests.show');
 
         // Room Management (Protected CRUD)
+        Route::get('/rooms/export/excel', [RoomController::class, 'exportExcel'])->name('admin.rooms.export.excel');
+
         Route::post('/rooms/create', [RoomController::class, 'store'])->name('rooms.create');
         Route::put('/rooms/update/{id}', [RoomController::class, 'update'])->name('rooms.update');
 
         Route::delete('/rooms/{id}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
         // Room Type Management (Protected CRUD)
+        Route::get('/room-types/export/excel', [RoomTypeController::class, 'exportExcel'])->name('admin.room-types.export.excel');
         Route::post('/room-types/create', [RoomTypeController::class, 'store'])->name('room-types.store');
         Route::put('/room-types/{room_types}', [RoomTypeController::class, 'update'])->name('room-types.update');
         Route::delete('/room-types/{room_types}', [RoomTypeController::class, 'destroy'])->name('room-types.destroy');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\RoomsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Room\IndexRoomRequest;
 use App\Http\Requests\Room\StoreRoomRequest;
@@ -14,12 +15,34 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class RoomController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
+
+    public function exportExcel(){
+
+    try{
+
+    
+    $fileName = 'lumiere_hotel_rooms_' . now()->format('Y_m_d_His') . '.xlsx';
+
+    return Excel::download(new RoomsExport, $fileName);
+
+    }catch(\Exception $e){
+
+    return response()->json([
+        'message' => 'Error' .$e,
+
+    ], 500);
+    }
+
+
+    }
+
     public function index(IndexRoomRequest $request) :JsonResponse
     {
 

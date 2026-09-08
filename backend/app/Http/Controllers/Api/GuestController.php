@@ -2,13 +2,35 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\GuestsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Guest; // Fixed: Singular model convention
 use App\Models\Guests;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class GuestController extends Controller
 {
+
+    public function exportExcel(){
+
+    try{
+
+    
+    $fileName = 'lumiere_hotel_guests_' . now()->format('Y_m_d_His') . '.xlsx';
+
+    return Excel::download(new GuestsExport, $fileName);
+
+    }catch(\Exception $e){
+
+    return response()->json([
+        'message' => 'Error' .$e,
+
+    ], 500);
+    }
+
+
+    }
     public function showProfile(Request $request)
     {
         $guest = $request->user()->guest;
