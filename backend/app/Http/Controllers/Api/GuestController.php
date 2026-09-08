@@ -45,7 +45,7 @@ class GuestController extends Controller
     public function updateProfile(Request $request)
     {
         $user = $request->user();
-        $guest = $request->$user->guest;
+        $guest = $user->guest;
 
         if (!$guest) {
             return response()->json(['message' => 'Guest profile not found.'], 404);
