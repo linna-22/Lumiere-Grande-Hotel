@@ -23,7 +23,7 @@ public function me(Request $request): JsonResponse
     }
 
    
-    public function changePassword(Request $request): JsonResponse // ✅ Fixed typo: changePassword
+    public function changePassword(Request $request): JsonResponse 
     {
         $validated = $request->validate([
             'current_password' => 'required|string',
