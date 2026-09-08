@@ -16,7 +16,7 @@ export default function Dashboard({ onNavigate }) {
         onNavigate={onNavigate}
       />
       <div className="flex-1 min-w-0">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setSidebarOpen(true)} onNavigate={onNavigate} />
         <main className="p-4 sm:p-6 max-w-[1400px] mx-auto">
           <Hero />
           <StatsGrid />

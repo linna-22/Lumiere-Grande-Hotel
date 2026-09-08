@@ -16,6 +16,7 @@ export default function TopBar({ onMenuClick, onNavigate }) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef(null);
   const { logout } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -33,12 +34,15 @@ export default function TopBar({ onMenuClick, onNavigate }) {
   }
 
   async function handleLogout() {
-    setProfileMenuOpen(false);
+    setLoggingOut(true);
     try {
       await logout();
     } catch (err) {
-      console.error("Logout failed:", err);
+      // Even if the API call fails (e.g. token already expired server-side),
+      // we still want to clear local state and send the user to Login.
+      console.error("Logout request failed:", err);
     } finally {
+      setLoggingOut(false);
       onNavigate?.("Login");
     }
   }
@@ -101,10 +105,11 @@ export default function TopBar({ onMenuClick, onNavigate }) {
                 <div className="h-px bg-base-border my-1" />
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  disabled={loggingOut}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-60"
                 >
                   <LogOut size={15} />
-                  Logout
+                  {loggingOut ? "Logging out..." : "Logout"}
                 </button>
               </div>
             )}

@@ -30,7 +30,7 @@ const pages = {
 }
 
 export default function App() {
-  const [page, setPage] = useState('Login')
+  const [page, setPage] = useState('Dashboard')
   const [navigationData, setNavigationData] = useState({})
   const Page = pages[page] || Login
 

@@ -1,90 +1,95 @@
-import { useEffect, useRef, useState } from 'react'
-import { Mail, ArrowLeft, Loader2 } from 'lucide-react'
-import { useAuth } from '../../hooks/useAuth'
+import { useEffect, useRef, useState } from "react";
+import { Mail, ArrowLeft, Loader2 } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
 
-const OTP_LENGTH = 6
-const RESEND_SECONDS = 60
+const OTP_LENGTH = 6;
+const RESEND_SECONDS = 60;
 
-export default function VerifyOtp({ email = '', userId, onNavigate }) {
-  const { verifyOtp } = useAuth()
-  const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(''))
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS)
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const inputRefs = useRef([])
+export default function VerifyOtp({ email = "", userId, onNavigate }) {
+  const { verifyOtp } = useAuth();
+  const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(""));
+  const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const inputRefs = useRef([]);
 
   useEffect(() => {
-    if (secondsLeft <= 0) return
-    const timer = setInterval(() => setSecondsLeft((s) => s - 1), 1000)
-    return () => clearInterval(timer)
-  }, [secondsLeft])
+    if (secondsLeft <= 0) return;
+    const timer = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearInterval(timer);
+  }, [secondsLeft]);
 
   function handleChange(index, value) {
-    const clean = value.replace(/\D/g, '').slice(-1)
-    const next = [...digits]
-    next[index] = clean
-    setDigits(next)
-    setError('')
+    const clean = value.replace(/\D/g, "").slice(-1);
+    const next = [...digits];
+    next[index] = clean;
+    setDigits(next);
+    setError("");
 
     if (clean && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus()
+      inputRefs.current[index + 1]?.focus();
     }
   }
 
   function handleKeyDown(index, e) {
-    if (e.key === 'Backspace' && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus()
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
     }
   }
 
   function handlePaste(e) {
-    e.preventDefault()
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH)
-    if (!pasted) return
-    const next = Array(OTP_LENGTH).fill('')
-    pasted.split('').forEach((char, i) => (next[i] = char))
-    setDigits(next)
-    const lastFilled = Math.min(pasted.length, OTP_LENGTH) - 1
-    inputRefs.current[lastFilled]?.focus()
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    const next = Array(OTP_LENGTH).fill("");
+    pasted.split("").forEach((char, i) => (next[i] = char));
+    setDigits(next);
+    const lastFilled = Math.min(pasted.length, OTP_LENGTH) - 1;
+    inputRefs.current[lastFilled]?.focus();
   }
 
-   async function handleSubmit(e) {
-    e.preventDefault()
-    const code = digits.join('')
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const code = digits.join("");
     if (code.length < OTP_LENGTH) {
-      setError('Please enter the full 6-digit code.')
-      return
+      setError("Please enter the full 6-digit code.");
+      return;
     }
-    setError('')
-    setSubmitting(true)
+    setError("");
+    setSubmitting(true);
     try {
-      await verifyOtp({ user_id: userId, otp_code: code })
-      onNavigate?.('Dashboard')
+      await verifyOtp({ email, otp_code: code });
+      onNavigate?.("Dashboard");
     } catch (err) {
       if (err.status === 422) {
-        setError(err.data?.message || 'Invalid code. Please try again.')
+        setError(err.data?.message || "Invalid code. Please try again.");
+      } else if (err.status === 429) {
+        setError(err.data?.message || "Too many attempts. Request a new code.");
       } else {
-        setError(err.message || 'Something went wrong. Please try again.')
+        setError(err.message || "Something went wrong. Please try again.");
       }
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   function handleResend() {
-    if (secondsLeft > 0) return
+    if (secondsLeft > 0) return;
     // NOTE: no /api/resend-otp route exists in your route list yet — see note below.
-    console.log('Resending OTP to', email)
-    setSecondsLeft(RESEND_SECONDS)
-    setDigits(Array(OTP_LENGTH).fill(''))
-    inputRefs.current[0]?.focus()
+    console.log("Resending OTP to", email);
+    setSecondsLeft(RESEND_SECONDS);
+    setDigits(Array(OTP_LENGTH).fill(""));
+    inputRefs.current[0]?.focus();
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-base-950 p-6">
       <div className="w-full max-w-md">
         <button
-          onClick={() => onNavigate?.('Login')}
+          onClick={() => onNavigate?.("Login")}
           className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors mb-6"
         >
           <ArrowLeft size={16} />
@@ -104,11 +109,16 @@ export default function VerifyOtp({ email = '', userId, onNavigate }) {
           <p className="text-sm text-slate-400 text-center mt-2">
             We sent a 6-digit code to
             <br />
-            <span className="text-slate-200 font-medium">{email || 'your email address'}</span>
+            <span className="text-slate-200 font-medium">
+              {email || "your email address"}
+            </span>
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8">
-            <div className="flex items-center justify-center gap-2 sm:gap-3" onPaste={handlePaste}>
+            <div
+              className="flex items-center justify-center gap-2 sm:gap-3"
+              onPaste={handlePaste}
+            >
               {digits.map((digit, index) => (
                 <input
                   key={index}
@@ -125,7 +135,9 @@ export default function VerifyOtp({ email = '', userId, onNavigate }) {
               ))}
             </div>
 
-            {error && <p className="text-rose-400 text-sm text-center mt-4">{error}</p>}
+            {error && (
+              <p className="text-rose-400 text-sm text-center mt-4">{error}</p>
+            )}
 
             <button
               type="submit"
@@ -138,14 +150,13 @@ export default function VerifyOtp({ email = '', userId, onNavigate }) {
                   Verifying...
                 </>
               ) : (
-                'Verify Code'
+                "Verify Code"
               )}
             </button>
           </form>
 
           <p className="text-sm text-slate-400 text-center mt-6">
-            Didn't receive the code?
-            {' '}
+            Didn't receive the code?{" "}
             {secondsLeft > 0 ? (
               <span className="text-slate-500">Resend in {secondsLeft}s</span>
             ) : (
@@ -160,5 +171,5 @@ export default function VerifyOtp({ email = '', userId, onNavigate }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

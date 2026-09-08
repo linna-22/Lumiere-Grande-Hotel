@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch, fetchCsrfCookie } from '../api/client'
+import { apiFetch, fetchCsrfCookie, setToken, clearToken } from '../api/client'
 
 export function useAuth() {
   const [user, setUser] = useState(null)
@@ -8,7 +8,7 @@ export function useAuth() {
 
   const checkSession = useCallback(async () => {
     try {
-      const data = await apiFetch('/user')
+      const data = await apiFetch('/user/me')
       setUser(data)
     } catch {
       setUser(null)
@@ -28,9 +28,9 @@ export function useAuth() {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    // Only set the authenticated user when login actually completed —
-    // when requires_2fa is true, there's no user/token yet.
+    // requires_2fa === true means no token yet — caller must route to VerifyOtp.
     if (data.access_token) {
+      setToken(data.access_token)
       setUser(data.user)
     }
     return data
@@ -43,21 +43,25 @@ export function useAuth() {
       method: 'POST',
       body: JSON.stringify({ name, email, password, password_confirmation }),
     })
+    if (data.access_token) setToken(data.access_token)
     setUser(data.user ?? data)
     return data
   }, [])
-  const verifyOtp = useCallback(async ({ email, otp }) => {
+
+  const verifyOtp = useCallback(async ({ email, otp_code }) => {
     setError(null)
     const data = await apiFetch('/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ email, otp }),
+      body: JSON.stringify({ email, otp_code }),
     })
+    if (data.access_token) setToken(data.access_token)
     setUser(data.user ?? data)
     return data
   }, [])
 
   const logout = useCallback(async () => {
     await apiFetch('/logout', { method: 'POST' })
+    clearToken()
     setUser(null)
   }, [])
 
