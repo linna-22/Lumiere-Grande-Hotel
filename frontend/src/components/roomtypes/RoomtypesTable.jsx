@@ -145,13 +145,13 @@ export default function RoomTypesTable({ roomTypes = [], loading, error, refetch
                         <Pencil size={12} />
                         Edit
                       </button>
-                      <button
+                      {/* <button
                         onClick={() => onDelete?.(rt)}
                         className="flex items-center gap-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors"
                       >
                         <Trash2 size={12} />
                         Delete
-                      </button>
+                      </button> */}
                     </div>
                   </td>
                 </tr>

@@ -39,7 +39,7 @@ export default function Rooms({ onNavigate }) {
     if (!deletingRoom) return;
     setDeleteInProgress(true);
     try {
-      const result = await apiFetch(`/rooms/${deletingRoom.id}`, {
+      const result = await apiFetch(`/admin/rooms/${deletingRoom.id}`, {
         method: "DELETE",
       });
       setDeletingRoom(null);

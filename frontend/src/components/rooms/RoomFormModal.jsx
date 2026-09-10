@@ -81,12 +81,12 @@ export default function RoomFormModal({ room, onClose, onSuccess }) {
         // Laravel needs a spoofed PUT when sending FormData from a browser,
         // since native fetch can't send a real PUT with multipart bodies.
         formData.append('_method', 'PUT')
-         await apiFetch(`/rooms/${room.id}`, {
+         await apiFetch(`/admin/rooms/update/${room.id}`, {
           method: 'POST',
           body: formData,
         })
       } else {
-         await apiFetch('/rooms/create', {
+         await apiFetch('/admin/rooms/create', {
           method: 'POST',
           body: formData,
         })

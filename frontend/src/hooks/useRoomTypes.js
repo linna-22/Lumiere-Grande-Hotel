@@ -79,7 +79,7 @@ export function useRoomTypes({ activeTab = 'All', page = 1, perPage = 8 } = {}) 
     const prev = roomTypes
     setRoomTypes((curr) => curr.filter((rt) => rt.id !== id))
     try {
-      await apiFetch(`/room-types/${id}`, { method: 'DELETE' })
+      await apiFetch(`/admin/room-types/${id}`, { method: 'DELETE' })
     } catch (err) {
       setRoomTypes(prev)
       throw err
