@@ -24,6 +24,7 @@ class RoomTypeController extends Controller
     public function exportExcel(){
     
     try{
+        
     $fileName = 'lumiere_hotel_room_types_' . now()->format('Y_m_d_His') . '.xlsx';
 
     return Excel::download(new RoomTypesExport, $fileName);

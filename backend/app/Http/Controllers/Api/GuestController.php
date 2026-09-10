@@ -36,6 +36,7 @@ class GuestController extends Controller
         $guest = $request->user()->guest;
 
         if (!$guest) {
+            
             return response()->json(['message' => 'Guest profile not found.'], 404);
         }
 
