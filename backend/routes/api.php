@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
+use App\Http\Controllers\Api\ReservationController;
 use App\Models\Guests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -113,3 +114,9 @@ Route::middleware('throttle:5,1')->group(function() {
 
 });
 
+Route::post('/reservation', [ReservationController::class, 'store']);
+
+Route::middleware('auth:sanctum')->group(function() {
+
+    Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
+});
