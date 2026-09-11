@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Dashboard from './pages/dashboard/Dashboard'
 import Reservations from './pages/reservations/Reservations'
 import Rooms from './pages/rooms/Rooms'
@@ -13,11 +13,8 @@ import Guests from './pages/guests/Guests'
 import Profile from './pages/Profile'
 import EditProfile from './pages/EditProfile'
 import ChangePassword from './pages/ChangePassword'
+import { setToken } from './api/client'
 
-
-// Lightweight page switcher for now — swap this for React Router once the
-// public-facing website / online booking pages are added alongside the
-// dashboard. Sidebar items without a page yet are no-ops.
 const pages = {
   Dashboard,
   Reservations,
@@ -27,18 +24,35 @@ const pages = {
   Login,
   Register,
   VerifyOtp,
-  'Check In': CheckIn,  
+  'Check In': CheckIn,
   'Check Out': CheckOut,
   Housekeeping,
   Profile,
   EditProfile,
   ChangePassword,
+}
 
+// Determine the initial page by checking for an OAuth callback in the URL.
+// GitHub/Google redirect the full browser here as a real navigation, so this
+// runs once, outside React state, before the first render decides what to show.
+function resolveInitialPage() {
+  if (window.location.pathname === '/auth/callback') {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
 
+    if (token) {
+      setToken(token)
+      // Clean the token out of the visible URL so it isn't left in browser
+      // history or accidentally shared/bookmarked.
+      window.history.replaceState({}, '', '/')
+      return 'Dashboard'
+    }
+  }
+  return 'Login'
 }
 
 export default function App() {
-  const [page, setPage] = useState('Login')
+  const [page, setPage] = useState(() => resolveInitialPage())
   const [navigationData, setNavigationData] = useState({})
   const Page = pages[page] || Login
 
