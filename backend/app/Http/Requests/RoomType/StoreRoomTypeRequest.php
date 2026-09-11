@@ -30,7 +30,7 @@ class StoreRoomTypeRequest extends FormRequest
         'max_occupancy'=> 'required|integer|min:1',
         'status'=>'required|string|in:active,inactive',
         'facility_ids'=>'nullable|array',
-        'facility_ids.*'=>'exists:facility_ids,id'
+        'facility_ids.*'=>'exists:facilities,id'
 
         ];
     }
