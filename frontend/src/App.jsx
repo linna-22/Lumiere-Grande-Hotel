@@ -19,11 +19,13 @@ import ChangePassword from './pages/ChangePassword'
 import AddUser from './pages/users/AddUser'
 import ViewUser from './pages/users/ViewUser'
 import EditUser from './pages/users/EditUser'
+import AddReservation from './pages/reservations/AddReservation'
 import { setToken } from './api/client'
 
 const pages = {
   Dashboard,
   Reservations,
+  'Reservations Add': AddReservation,
   RoomTypes,
   Rooms,
   Guests,

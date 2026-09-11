@@ -89,3 +89,23 @@ export function deleteUser(id) {
     method: 'DELETE',
   })
 }
+
+// Reservation
+export function createReservation(data) {
+  return apiFetch('/reservation', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function listReservationRoomTypes() {
+    return apiFetch('/room-types')
+}
+
+export function listRooms(params = {}) {
+    const query = new URLSearchParams(params).toString()
+
+    return apiFetch(
+        `/rooms${query ? `?${query}` : ''}`
+    )
+}
