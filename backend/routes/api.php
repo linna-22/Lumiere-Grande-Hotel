@@ -77,9 +77,9 @@ Route::middleware('auth:sanctum')->group(function () {
         
         Route::get('/user', [UserController::class, 'index'])->name('admin.user.index');
         Route::post('/user/create', [UserController::class, 'store'])->name('admin.user.store');
-        Route::get('user/{id}', [UserController::class, 'show'])->name('admin.user.show');
-        Route::put('user/update/{id}', [UserController::class, 'update'])->name('admin.user.update');
-        Route::delete('user/delete/{id}', [UserController::class, 'destroy'])->name('admin.user.destory');
+        Route::get('user/{user}', [UserController::class, 'show'])->name('admin.user.show');
+        Route::put('user/update/{user}', [UserController::class, 'update'])->name('admin.user.update');
+        Route::delete('user/delete/{user}', [UserController::class, 'destroy'])->name('admin.user.destory');
 
         // Guest Management
         Route::get('/guests/export/excel', [GuestController::class, 'exportExcel'])->name('admin.guests.export.excel');
