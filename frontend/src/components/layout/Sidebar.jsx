@@ -25,9 +25,14 @@ const navGroups = [
     items: [
       { label: 'Dashboard', icon: LayoutGrid },
       { label: 'Reservations', icon: CalendarDays },
-      // { label: 'RoomTypes', icon: BedDoubleIcon, badge: 2},
-      { label: 'RoomTypes', icon: Bed},
+      { label: 'RoomTypes', icon: Bed },
       { label: 'Rooms', icon: BedDouble },
+    ],
+  },
+  {
+    label: 'User',
+    items: [
+      { label: 'Users', icon: Users },
       { label: 'Guests', icon: Users },
     ],
   },
@@ -37,17 +42,8 @@ const navGroups = [
       { label: 'Check In', icon: LogIn, badge: 5 },
       { label: 'Check Out', icon: DoorOpen, badge: 3 },
       { label: 'Housekeeping', icon: Sparkles, badge: 7 },
-      // { label: 'Payments', icon: CreditCard },
-      // { label: 'Invoices', icon: FileText },
-      // { label: 'POS', icon: ShoppingCart },
     ],
   },
-  // {
-  //   label: 'Amenities',
-  //   items: [
-  //     { label: 'Restaurant', icon: UtensilsCrossed },
-  //   ],
-  // },
 ]
 
 export default function Sidebar({ open, onClose, active = 'Dashboard', onNavigate }) {

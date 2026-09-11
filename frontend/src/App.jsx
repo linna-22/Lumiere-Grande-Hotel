@@ -12,9 +12,13 @@ import Housekeeping from './pages/housekeeping/Housekeeping'
 import Guests from './pages/guests/Guests'
 import AddGuest from './pages/guests/AddGuest'
 import ViewGuest from './pages/guests/ViewGuest'
+import Users from './pages/users/Users'
 import Profile from './pages/Profile'
 import EditProfile from './pages/EditProfile'
 import ChangePassword from './pages/ChangePassword'
+import AddUser from './pages/users/AddUser'
+import ViewUser from './pages/users/ViewUser'
+import EditUser from './pages/users/EditUser'
 import { setToken } from './api/client'
 
 const pages = {
@@ -34,6 +38,10 @@ const pages = {
   Profile,
   EditProfile,
   ChangePassword,
+  Users,
+  'Users Add': AddUser,
+  'Users View': ViewUser,
+  'Users Edit': EditUser,
 }
 
 // Determine the initial page by checking for an OAuth callback in the URL.

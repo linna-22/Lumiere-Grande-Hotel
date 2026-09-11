@@ -55,3 +55,37 @@ export function updateRoomType(id, data) {
 export function deleteRoomType(id) {
   return apiFetch(`/admin/room-types/${id}`, { method: 'DELETE' })
 }
+
+// Users
+
+export function listUsers(params = {}) {
+  const query = new URLSearchParams(params).toString()
+
+  return apiFetch(
+    `/admin/user${query ? `?${query}` : ''}`
+  )
+}
+
+export function createUser(data) {
+  return apiFetch('/admin/user/create', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function getUser(id) {
+  return apiFetch(`/admin/user/${id}`)
+}
+
+export function updateUser(id, data) {
+  return apiFetch(`/admin/user/update/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteUser(id) {
+  return apiFetch(`/admin/user/delete/${id}`, {
+    method: 'DELETE',
+  })
+}
