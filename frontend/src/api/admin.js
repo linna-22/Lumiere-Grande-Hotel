@@ -1,18 +1,20 @@
 import { apiFetch } from './client'
 
 // Guests
-export function listGuests() {
-  return apiFetch('/admin/guests')
+export function listGuests(params = {}) {
+  const query = new URLSearchParams(params).toString()
+
+  return apiFetch(`/admin/guests${query ? `?${query}` : ''}`)
 }
 
-export function createWalkInGuest(data) {
-  return apiFetch('/admin/guests/walk-in', {
+export async function createWalkInGuest(data) {
+  return apiFetch('/admin/guests/walkIn', {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
-export function getGuest(id) {
+export async function getGuest(id) {
   return apiFetch(`/admin/guests/${id}`)
 }
 

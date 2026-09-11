@@ -10,6 +10,8 @@ import CheckIn from './pages/checkin/CheckIn'
 import CheckOut from './pages/checkout/CheckOut'
 import Housekeeping from './pages/housekeeping/Housekeeping'
 import Guests from './pages/guests/Guests'
+import AddGuest from './pages/guests/AddGuest'
+import ViewGuest from './pages/guests/ViewGuest'
 import Profile from './pages/Profile'
 import EditProfile from './pages/EditProfile'
 import ChangePassword from './pages/ChangePassword'
@@ -21,6 +23,8 @@ const pages = {
   RoomTypes,
   Rooms,
   Guests,
+  'Guests Add': AddGuest,
+  'Guests View': ViewGuest,
   Login,
   Register,
   VerifyOtp,
