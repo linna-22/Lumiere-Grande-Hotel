@@ -10,6 +10,9 @@ import CheckIn from './pages/checkin/CheckIn'
 import CheckOut from './pages/checkout/CheckOut'
 import Housekeeping from './pages/housekeeping/Housekeeping'
 import Guests from './pages/guests/Guests'
+import Profile from './pages/Profile'
+import EditProfile from './pages/EditProfile'
+import ChangePassword from './pages/ChangePassword'
 
 
 // Lightweight page switcher for now — swap this for React Router once the
@@ -24,13 +27,18 @@ const pages = {
   Login,
   Register,
   VerifyOtp,
-  'Check In': CheckIn,
+  'Check In': CheckIn,  
   'Check Out': CheckOut,
   Housekeeping,
+  Profile,
+  EditProfile,
+  ChangePassword,
+
+
 }
 
 export default function App() {
-  const [page, setPage] = useState('Dashboard')
+  const [page, setPage] = useState('Login')
   const [navigationData, setNavigationData] = useState({})
   const Page = pages[page] || Login
 

@@ -8,14 +8,34 @@ import {
   X,
   User,
   LogOut,
+  Pencil,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
+
+function initials(name) {
+  return (name || "?")
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatRole(role) {
+  if (!role) return "";
+  return role
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 export default function TopBar({ onMenuClick, onNavigate }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef(null);
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -31,6 +51,16 @@ export default function TopBar({ onMenuClick, onNavigate }) {
   function handleViewProfile() {
     setProfileMenuOpen(false);
     onNavigate?.("Profile");
+  }
+
+  function handleEditProfile() {
+    setProfileMenuOpen(false);
+    onNavigate?.("EditProfile");
+  }
+
+  function handleChangePassword() {
+    setProfileMenuOpen(false);
+    onNavigate?.("ChangePassword");
   }
 
   async function handleLogout() {
@@ -76,14 +106,24 @@ export default function TopBar({ onMenuClick, onNavigate }) {
               onClick={() => setProfileMenuOpen((v) => !v)}
               className="flex items-center gap-2 pl-1 sm:pl-2 rounded-lg hover:bg-base-800 transition-colors py-1 pr-2"
             >
-              <img
-                src="https://i.pinimg.com/1200x/36/9d/8c/369d8c1a01f21c357fd77dd6538eaea5.jpg"
-                alt="Lina Oeu"
-                className="w-9 h-9 rounded-full object-cover border border-base-border"
-              />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-9 h-9 rounded-full object-cover border border-base-border"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-amber-400/20 text-amber-400 flex items-center justify-center text-xs font-bold border border-base-border">
+                  {initials(user?.name)}
+                </div>
+              )}
               <div className="leading-tight hidden xl:block text-left">
-                <p className="text-sm font-semibold text-white">Lina Oeu</p>
-                <p className="text-[11px] text-amber-400">Developer</p>
+                <p className="text-sm font-semibold text-white">
+                  {user?.name ?? "..."}
+                </p>
+                <p className="text-[11px] text-amber-400">
+                  {formatRole(user?.role)}
+                </p>
               </div>
               <ChevronDown
                 size={14}
@@ -101,6 +141,20 @@ export default function TopBar({ onMenuClick, onNavigate }) {
                 >
                   <User size={15} />
                   View Profile
+                </button>
+                <button
+                  onClick={handleEditProfile}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-base-800 transition-colors"
+                >
+                  <Pencil size={15} />
+                  Edit Profile
+                </button>
+                <button
+                  onClick={handleChangePassword}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-base-800 transition-colors"
+                >
+                  <Lock size={15} />
+                  Change Password
                 </button>
                 <div className="h-px bg-base-border my-1" />
                 <button
@@ -147,7 +201,7 @@ export default function TopBar({ onMenuClick, onNavigate }) {
         <span className="whitespace-nowrap">Sat, August 22, 2026</span>
         <span className="text-slate-600">•</span>
         <span className="flex items-center gap-1 whitespace-nowrap">
-          <Cloud size={12} className="text-sky-400" /> 28°C - Dasmariñas
+          <Cloud size={12} className="text-sky-400" /> 28°C - Phnom Penh
         </span>
       </div>
     </header>

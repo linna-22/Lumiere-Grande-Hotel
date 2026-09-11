@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
   Search,
   FileDown,
@@ -9,99 +9,17 @@ import {
   Eye,
   Pencil,
   Trash2,
+  Loader2,
 } from 'lucide-react'
 import Sidebar from '../../components/layout/Sidebar'
 import TopBar from '../../components/layout/TopBar'
-
-// Mock data — replace with a real fetch (e.g. GET /api/admin/guests)
-const MOCK_GUESTS = [
-  {
-    id: 1,
-    name: 'Santiago Reyes',
-    email: 'santiago.reyes@email.com',
-    phone: '+63 917 123 4567',
-    nationality: 'Filipino',
-    status: 'VIP',
-    stays: 24,
-    totalSpent: 480000,
-    points: 4800,
-    since: '2022-01-10',
-  },
-  {
-    id: 2,
-    name: 'Maria Santos',
-    email: 'maria.santos@email.com',
-    phone: '+63 918 234 5678',
-    nationality: 'Filipino',
-    status: 'Active',
-    stays: 8,
-    totalSpent: 144000,
-    points: 1440,
-    since: '2023-03-05',
-  },
-  {
-    id: 3,
-    name: 'James Lim',
-    email: 'james.lim@email.com',
-    phone: '+63 919 345 6789',
-    nationality: 'Filipino-Chinese',
-    status: 'VIP',
-    stays: 36,
-    totalSpent: 720000,
-    points: 7200,
-    since: '2021-06-12',
-  },
-  {
-    id: 4,
-    name: 'Ana Villanueva',
-    email: 'ana.v@email.com',
-    phone: '+63 920 456 7890',
-    nationality: 'Filipino',
-    status: 'Active',
-    stays: 3,
-    totalSpent: 180000,
-    points: 1800,
-    since: '2024-01-20',
-  },
-  {
-    id: 5,
-    name: 'Carlos Mendoza',
-    email: 'cmendoza@email.com',
-    phone: '+63 921 567 8901',
-    nationality: 'Filipino',
-    status: 'Active',
-    stays: 12,
-    totalSpent: 240000,
-    points: 2400,
-    since: '2022-08-30',
-  },
-  {
-    id: 6,
-    name: 'Grace Tan',
-    email: 'grace.tan@email.com',
-    phone: '+63 922 678 9012',
-    nationality: 'Filipino',
-    status: 'VIP',
-    stays: 18,
-    totalSpent: 360000,
-    points: 3600,
-    since: '2022-04-15',
-  },
-]
-
-const statusStyles = {
-  VIP: 'bg-amber-500/15 text-amber-400',
-  Active: 'bg-emerald-500/15 text-emerald-400',
-  Blacklisted: 'bg-rose-500/15 text-rose-400',
-}
-
-function formatCurrency(n) {
-  return `₱${n.toLocaleString('en-US')}`
-}
+import { listGuests } from '../../api/admin'
+import { ApiError } from '../../api/client'
 
 function initials(name) {
-  return name
+  return (name || '?')
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
@@ -120,33 +38,77 @@ function avatarColor(id) {
   return AVATAR_COLORS[id % AVATAR_COLORS.length]
 }
 
-const columns = ['Guest', 'Phone', 'Nationality', 'Status', 'Stays', 'Total Spent', 'Points', 'Since']
+const columns = ['Guest', 'Phone', 'Nationality', 'Since']
+
+// Maps a Laravel `Guests` record (with `user` relation loaded) to the shape the table needs
+function mapGuest(g) {
+  return {
+    id: g.id,
+    name: `${g.first_name ?? ''} ${g.last_name ?? ''}`.trim() || '—',
+    email: g.user?.email ?? g.email ?? '—',
+    phone: g.phone ?? '—',
+    nationality: g.nationality ?? '—',
+    since: g.created_at ? g.created_at.slice(0, 10) : '—',
+  }
+}
 
 export default function Guests({ onNavigate }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [guests] = useState(MOCK_GUESTS)
+  const [guests, setGuests] = useState([])
   const [query, setQuery] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 })
+
+  const fetchGuests = useCallback(async (search = '', page = 1) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const json = await listGuests({
+        ...(search ? { search } : {}),
+        page,
+      })
+      // Laravel's paginate() returns { data: [...], current_page, last_page, total, ... }
+      setGuests((json.data ?? []).map(mapGuest))
+      setPagination({
+        current_page: json.current_page ?? 1,
+        last_page: json.last_page ?? 1,
+        total: json.total ?? (json.data?.length ?? 0),
+      })
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError('Your session has expired. Please log in again.')
+      } else {
+        setError(err.message || 'Failed to load guests')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Debounced search
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      fetchGuests(query, 1)
+  }, 350)
+    return () => clearTimeout(handle)
+  }, [query, fetchGuests])
 
   const counts = useMemo(
     () => ({
-      total: guests.length,
-      vip: guests.filter((g) => g.status === 'VIP').length,
-      active: guests.filter((g) => g.status === 'Active').length,
-      blacklisted: guests.filter((g) => g.status === 'Blacklisted').length,
+      total: pagination.total,
     }),
-    [guests]
+    [pagination.total]
   )
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return guests
-    return guests.filter(
-      (g) =>
-        g.name.toLowerCase().includes(q) ||
-        g.email.toLowerCase().includes(q) ||
-        g.phone.includes(q)
-    )
-  }, [guests, query])
+  const handleExportExcel = () => {
+    // Export is a GET route that streams a file download — apiFetch expects JSON,
+    // so this opens the URL directly. Note: this bypasses the Bearer token, so
+    // exportExcel's route will 401 unless it's also reachable via the Sanctum
+    // cookie session (credentials: 'include' won't apply to window.open).
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:9000/api'
+    window.open(`${base}/admin/guests/export/excel`, '_blank')
+  }
 
   return (
     <div className="flex bg-base-850 min-h-screen">
@@ -173,7 +135,10 @@ export default function Guests({ onNavigate }) {
                 <FileDown size={15} />
                 Export PDF
               </button>
-              <button className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors"
+              >
                 <FileSpreadsheet size={15} />
                 Export Excel
               </button>
@@ -189,22 +154,10 @@ export default function Guests({ onNavigate }) {
           </div>
 
           {/* Stat cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-            <div className="bg-base-850 border border-base-border rounded-2xl py-6 flex flex-col items-center justify-center text-center transition-all duration-200 hover:-translate-y-1 hover:border-slate-500">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 max-w-sm">
+            <div className="bg-base-850 border border-base-border rounded-2xl py-6 flex flex-col items-center justify-center text-center">
               <p className="text-3xl font-bold font-serif text-amber-400">{counts.total}</p>
               <p className="text-sm text-slate-400 mt-1">Total Guests</p>
-            </div>
-            <div className="bg-base-850 border border-base-border rounded-2xl py-6 flex flex-col items-center justify-center text-center transition-all duration-200 hover:-translate-y-1 hover:border-slate-500">
-              <p className="text-3xl font-bold font-serif text-amber-400">{counts.vip}</p>
-              <p className="text-sm text-slate-400 mt-1">VIP</p>
-            </div>
-            <div className="bg-base-850 border border-base-border rounded-2xl py-6 flex flex-col items-center justify-center text-center transition-all duration-200 hover:-translate-y-1 hover:border-slate-500">
-              <p className="text-3xl font-bold font-serif text-emerald-400">{counts.active}</p>
-              <p className="text-sm text-slate-400 mt-1">Active</p>
-            </div>
-            <div className="bg-base-850 border border-base-border rounded-2xl py-6 flex flex-col items-center justify-center text-center transition-all duration-200 hover:-translate-y-1 hover:border-slate-500">
-              <p className="text-3xl font-bold font-serif text-rose-400">{counts.blacklisted}</p>
-              <p className="text-sm text-slate-400 mt-1">Blacklisted</p>
             </div>
           </div>
 
@@ -221,11 +174,19 @@ export default function Guests({ onNavigate }) {
                   className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
                 />
               </div>
-              <span className="text-sm text-slate-500 shrink-0">{filtered.length} records</span>
+              <span className="text-sm text-slate-500 shrink-0">
+                {loading ? 'Loading…' : `${pagination.total} records`}
+              </span>
             </div>
 
+            {error && (
+              <div className="px-4 pb-3 text-sm text-rose-400">
+                {error}
+              </div>
+            )}
+
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="border-y border-base-border text-slate-400">
                     {columns.map((col) => (
@@ -240,7 +201,24 @@ export default function Guests({ onNavigate }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((g) => (
+                  {loading && guests.length === 0 && (
+                    <tr>
+                      <td colSpan={columns.length + 1} className="px-4 py-10 text-center text-slate-500">
+                        <Loader2 className="animate-spin inline-block mr-2" size={16} />
+                        Loading guests…
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && guests.length === 0 && !error && (
+                    <tr>
+                      <td colSpan={columns.length + 1} className="px-4 py-10 text-center text-slate-500">
+                        No guests match your search.
+                      </td>
+                    </tr>
+                  )}
+
+                  {guests.map((g) => (
                     <tr
                       key={g.id}
                       className="border-b border-base-border last:border-b-0 hover:bg-base-800/50 transition-colors"
@@ -264,22 +242,6 @@ export default function Guests({ onNavigate }) {
                       <td className="px-4 py-4 align-top text-slate-300 whitespace-nowrap">
                         {g.nationality}
                       </td>
-                      <td className="px-4 py-4 align-top whitespace-nowrap">
-                        <span
-                          className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${statusStyles[g.status]}`}
-                        >
-                          {g.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 align-top text-slate-300 whitespace-nowrap">
-                        {g.stays}
-                      </td>
-                      <td className="px-4 py-4 align-top text-amber-400 font-semibold whitespace-nowrap">
-                        {formatCurrency(g.totalSpent)}
-                      </td>
-                      <td className="px-4 py-4 align-top text-violet-400 font-semibold whitespace-nowrap">
-                        {g.points.toLocaleString('en-US')}
-                      </td>
                       <td className="px-4 py-4 align-top text-slate-400 whitespace-nowrap">
                         {g.since}
                       </td>
@@ -301,17 +263,32 @@ export default function Guests({ onNavigate }) {
                       </td>
                     </tr>
                   ))}
-
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
-                        No guests match your search.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {pagination.last_page > 1 && (
+              <div className="flex items-center justify-end gap-2 p-4 border-t border-base-border">
+                <button
+                  disabled={pagination.current_page <= 1}
+                  onClick={() => fetchGuests(query, pagination.current_page - 1)}
+                  className="px-3 py-1.5 text-sm rounded-md bg-base-800 border border-base-border text-slate-300 disabled:opacity-40"
+                >
+                  Prev
+                </button>
+                <span className="text-sm text-slate-400">
+                  Page {pagination.current_page} of {pagination.last_page}
+                </span>
+                <button
+                  disabled={pagination.current_page >= pagination.last_page}
+                  onClick={() => fetchGuests(query, pagination.current_page + 1)}
+                  className="px-3 py-1.5 text-sm rounded-md bg-base-800 border border-base-border text-slate-300 disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>

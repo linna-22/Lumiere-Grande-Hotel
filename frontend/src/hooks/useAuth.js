@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch, fetchCsrfCookie, setToken, clearToken } from '../api/client'
+import { apiFetch, setToken, clearToken } from '../api/client'
 
 export function useAuth() {
   const [user, setUser] = useState(null)
@@ -8,8 +8,8 @@ export function useAuth() {
 
   const checkSession = useCallback(async () => {
     try {
-      const data = await apiFetch('/user/me')
-      setUser(data)
+      const res = await apiFetch('/user/me')
+      setUser(res.data)
     } catch {
       setUser(null)
     } finally {
@@ -23,12 +23,10 @@ export function useAuth() {
 
   const login = useCallback(async ({ email, password }) => {
     setError(null)
-    await fetchCsrfCookie()
     const data = await apiFetch('/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    // requires_2fa === true means no token yet — caller must route to VerifyOtp.
     if (data.access_token) {
       setToken(data.access_token)
       setUser(data.user)
@@ -38,7 +36,6 @@ export function useAuth() {
 
   const register = useCallback(async ({ name, email, password, password_confirmation }) => {
     setError(null)
-    await fetchCsrfCookie()
     const data = await apiFetch('/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, password_confirmation }),
