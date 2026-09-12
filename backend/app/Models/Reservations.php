@@ -12,6 +12,8 @@ class Reservations extends Model
 {
     use HasFactory;
 
+  
+
     protected $fillable = [
         'guest_id',
         'reservation_code',
@@ -64,4 +66,11 @@ class Reservations extends Model
     {
         return $this->hasOne(Reviews::class);
     }
+
+    public function reservationRooms(): HasMany{
+
+    return $this->hasMany(Reservation_rooms::class, 'reservation_id');
+    
+    }
+
 }

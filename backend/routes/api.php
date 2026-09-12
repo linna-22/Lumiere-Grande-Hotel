@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\ReservationController;
+use App\Http\Controllers\PaymentController;
 use App\Models\Guests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -118,5 +119,14 @@ Route::post('/reservation', [ReservationController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function() {
 
+    Route::get('/reservation', [ReservationController::class, 'index'])->name('reservation.index');
     Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
+});
+
+Route::apiResource('reservations', ReservationController::class);
+Route::post('reservations/{code}/settle-checkin', [ReservationController::class, 'settleAndCheck']);
+
+Route::prefix('payments/khqr')->group(function () {
+    Route::post('/generate', [PaymentController::class, 'generateKhqr']);
+    Route::get('/verify/{paymentId}', [PaymentController::class, 'verifyKhqr']);
 });
