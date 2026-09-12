@@ -252,7 +252,7 @@ export default function Housekeeping({ onNavigate }) {
         onNavigate={onNavigate}
       />
       <div className="flex-1 min-w-0">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setSidebarOpen(true)} onNavigate={onNavigate} />
         <main className="p-4 sm:p-6 max-w-[1600px] mx-auto">
           {/* Header */}
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">

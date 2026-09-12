@@ -78,12 +78,12 @@ export default function RoomTypeFormModal({ roomType, onClose, onSuccess }) {
 
     try {
       if (isEditMode) {
-        await apiFetch(`/room-types/${roomType.id}`, {
+        await apiFetch(`/admin/room-types/${roomType.id}`, {
           method: 'PUT',
           body: JSON.stringify(payload),
         })
       } else {
-        await apiFetch('/room-types', {
+        await apiFetch('/admin/room-types/create', {
           method: 'POST',
           body: JSON.stringify(payload),
         })

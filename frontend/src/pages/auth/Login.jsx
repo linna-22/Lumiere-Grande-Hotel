@@ -52,24 +52,28 @@ export default function Login({ onNavigate }) {
   }
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true);
-    setErrors({});
-    try {
-      await login(form);
+  e.preventDefault();
+  setSubmitting(true);
+  setErrors({});
+  try {
+    const data = await login(form);
+    if (data.requires_2fa) {
+      onNavigate?.("VerifyOtp", { email: form.email, userId: data.user_id });
+    } else {
       onNavigate?.("Dashboard");
-    } catch (err) {
-      if (err.status === 422 && err.data?.errors) {
-        setErrors(err.data.errors);
-      } else if (err.status === 401) {
-        setErrors({ general: ["Incorrect email or password."] });
-      } else {
-        setErrors({ general: [err.message] });
-      }
-    } finally {
-      setSubmitting(false);
     }
+  } catch (err) {
+    if (err.status === 422 && err.data?.errors) {
+      setErrors(err.data.errors);
+    } else if (err.status === 401) {
+      setErrors({ general: ["Incorrect email or password."] });
+    } else {
+      setErrors({ general: [err.message] });
+    }
+  } finally {
+    setSubmitting(false);
   }
+}
 
   function handleGoogleSignIn() {
     window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/google`;
@@ -227,7 +231,7 @@ export default function Login({ onNavigate }) {
             </button>
           </form>
 
-          <p className="text-sm text-slate-400 text-center mt-6">
+          {/* <p className="text-sm text-slate-400 text-center mt-6">
             Don't have an account?{" "}
             <button
               onClick={() => onNavigate?.("Register")}
@@ -235,7 +239,7 @@ export default function Login({ onNavigate }) {
             >
               Create one
             </button>
-          </p>
+          </p> */}
         </div>
       </div>
       {errors.general && (

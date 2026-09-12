@@ -1,5 +1,6 @@
 import { CheckCircle2 } from 'lucide-react'
 
+
 export default function SuccessModal({ message, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">

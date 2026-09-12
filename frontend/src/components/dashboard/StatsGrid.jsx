@@ -16,6 +16,12 @@ const stats = [
     value: '50',
     label: 'Total Rooms',
     sub: '',
+    roomTypes: [
+      { name: 'Single', count: 15 },
+      { name: 'Double', count: 20 },
+      { name: 'Suite', count: 10 },
+      { name: 'Deluxe', count: 5 },
+    ],
   },
   {
     icon: DoorOpen,
@@ -54,7 +60,7 @@ const stats = [
 export default function StatsGrid() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-      {stats.map(({ icon: Icon, iconBg, value, label, sub, badge, badgeUp }) => (
+      {stats.map(({ icon: Icon, iconBg, value, label, sub, badge, badgeUp, roomTypes }) => (
         <div
           key={label}
           className="bg-base-850 border border-base-border rounded-xl p-4 flex flex-col gap-3"
@@ -78,7 +84,20 @@ export default function StatsGrid() {
           <div>
             <p className="text-2xl font-extrabold text-white leading-none">{value}</p>
             <p className="text-sm text-slate-300 mt-1.5">{label}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
+            {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+
+            {roomTypes && roomTypes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {roomTypes.map((rt) => (
+                  <span
+                    key={rt.name}
+                    className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-base-700/60 text-slate-300 border border-base-border"
+                  >
+                    {rt.name} <span className="text-slate-400">· {rt.count}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ))}

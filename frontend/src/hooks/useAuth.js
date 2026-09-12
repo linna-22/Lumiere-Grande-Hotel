@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch, fetchCsrfCookie } from '../api/client'
+import { apiFetch, setToken, clearToken } from '../api/client'
 
 export function useAuth() {
   const [user, setUser] = useState(null)
@@ -8,8 +8,8 @@ export function useAuth() {
 
   const checkSession = useCallback(async () => {
     try {
-      const data = await apiFetch('/user')
-      setUser(data)
+      const res = await apiFetch('/user/me')
+      setUser(res.data)
     } catch {
       setUser(null)
     } finally {
@@ -23,30 +23,44 @@ export function useAuth() {
 
   const login = useCallback(async ({ email, password }) => {
     setError(null)
-    await fetchCsrfCookie()
     const data = await apiFetch('/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    setUser(data.user ?? data)
+    if (data.access_token) {
+      setToken(data.access_token)
+      setUser(data.user)
+    }
     return data
   }, [])
 
   const register = useCallback(async ({ name, email, password, password_confirmation }) => {
     setError(null)
-    await fetchCsrfCookie()
     const data = await apiFetch('/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, password_confirmation }),
     })
+    if (data.access_token) setToken(data.access_token)
+    setUser(data.user ?? data)
+    return data
+  }, [])
+
+  const verifyOtp = useCallback(async ({ email, otp_code }) => {
+    setError(null)
+    const data = await apiFetch('/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp_code }),
+    })
+    if (data.access_token) setToken(data.access_token)
     setUser(data.user ?? data)
     return data
   }, [])
 
   const logout = useCallback(async () => {
     await apiFetch('/logout', { method: 'POST' })
+    clearToken()
     setUser(null)
   }, [])
 
-  return { user, loading, error, login, register, logout, checkSession, isAuthenticated: Boolean(user) }
+  return { user, loading, error, login, register, verifyOtp, logout, checkSession, isAuthenticated: Boolean(user) }
 }

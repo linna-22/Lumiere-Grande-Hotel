@@ -1,25 +1,14 @@
 import { useState } from 'react'
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 
 function GoogleIcon(props) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" {...props}>
-      <path
-        fill="#4285F4"
-        d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.58-5.17 3.58-8.81z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.88-3c-1.08.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11C3.24 21.3 7.28 24 12 24z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.27 14.27c-.24-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.62H1.27A11.96 11.96 0 000 12c0 1.93.46 3.76 1.27 5.38l4-3.11z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 4.77c1.76 0 3.34.6 4.59 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.28 0 3.24 2.7 1.27 6.62l4 3.11C6.22 6.88 8.87 4.77 12 4.77z"
-      />
+      <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.58-5.17 3.58-8.81z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.88-3c-1.08.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11C3.24 21.3 7.28 24 12 24z" />
+      <path fill="#FBBC05" d="M5.27 14.27c-.24-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.62H1.27A11.96 11.96 0 000 12c0 1.93.46 3.76 1.27 5.38l4-3.11z" />
+      <path fill="#EA4335" d="M12 4.77c1.76 0 3.34.6 4.59 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.28 0 3.24 2.7 1.27 6.62l4 3.11C6.22 6.88 8.87 4.77 12 4.77z" />
     </svg>
   )
 }
@@ -33,6 +22,7 @@ function GitHubIcon(props) {
 }
 
 export default function Register({ onNavigate }) {
+  const { register } = useAuth()
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -40,27 +30,38 @@ export default function Register({ onNavigate }) {
     password_confirmation: '',
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState({})
 
   function handleChange(e) {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    // TODO: wire up to /api/register once the endpoint exists
-    console.log('Register form submitted:', form)
+    setSubmitting(true)
+    setErrors({})
+    try {
+      await register(form)
+      onNavigate?.('Dashboard')
+    } catch (err) {
+      if (err.status === 422 && err.data?.errors) {
+        setErrors(err.data.errors)
+      } else {
+        setErrors({ general: [err.message || 'Something went wrong. Please try again.'] })
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleGoogleSignUp() {
     window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/google`
-    console.log('Sign up with Google clicked')
   }
 
   function handleGitHubSignUp() {
     window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/github`
-    // TODO: wire up to GitHub OAuth flow once the backend endpoint exists
-    console.log('Sign up with GitHub clicked')
   }
 
   return (
@@ -84,8 +85,13 @@ export default function Register({ onNavigate }) {
             <h2 className="text-xl sm:text-3xl font-bold text-white font-serif tracking-tight">
               Create an account
             </h2>
-            {/* <p className="text-sm text-slate-400 mt-1">Get started managing your hotel</p> */}
           </div>
+
+          {errors.general && (
+            <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3 mb-5">
+              {errors.general[0]}
+            </div>
+          )}
 
           <div className="space-y-3">
             <button
@@ -129,6 +135,7 @@ export default function Register({ onNavigate }) {
                   className="w-full bg-base-850 border border-base-border rounded-lg pl-10 pr-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
+              {errors.name && <p className="text-rose-400 text-xs mt-1">{errors.name[0]}</p>}
             </div>
 
             <div>
@@ -146,6 +153,7 @@ export default function Register({ onNavigate }) {
                   className="w-full bg-base-850 border border-base-border rounded-lg pl-10 pr-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
+              {errors.email && <p className="text-rose-400 text-xs mt-1">{errors.email[0]}</p>}
             </div>
 
             <div>
@@ -170,6 +178,7 @@ export default function Register({ onNavigate }) {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {errors.password && <p className="text-rose-400 text-xs mt-1">{errors.password[0]}</p>}
             </div>
 
             <div>
@@ -191,9 +200,17 @@ export default function Register({ onNavigate }) {
 
             <button
               type="submit"
-              className="w-full bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold py-2.5 rounded-lg transition-colors mt-2"
+              disabled={submitting}
+              className="w-full flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-500 disabled:opacity-60 text-base-950 font-semibold py-2.5 rounded-lg transition-colors mt-2"
             >
-              Create Account
+              {submitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                'Create Account'
+              )}
             </button>
           </form>
 

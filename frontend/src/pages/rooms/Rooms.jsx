@@ -39,7 +39,7 @@ export default function Rooms({ onNavigate }) {
     if (!deletingRoom) return;
     setDeleteInProgress(true);
     try {
-      const result = await apiFetch(`/rooms/${deletingRoom.id}`, {
+      const result = await apiFetch(`/admin/rooms/${deletingRoom.id}`, {
         method: "DELETE",
       });
       setDeletingRoom(null);
@@ -89,7 +89,7 @@ export default function Rooms({ onNavigate }) {
         onNavigate={onNavigate}
       />
       <div className="flex-1 min-w-0">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setSidebarOpen(true)} onNavigate={onNavigate} />
         <main className="p-4 sm:p-6 max-w-[1400px] mx-auto">
           <PageHeader
             view={view}

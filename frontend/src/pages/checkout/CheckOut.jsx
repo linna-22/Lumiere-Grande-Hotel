@@ -167,7 +167,7 @@ export default function CheckOut({ onNavigate }) {
         onNavigate={onNavigate}
       />
       <div className="flex-1 min-w-0">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setSidebarOpen(true)} onNavigate={onNavigate} />
         <main className="p-4 sm:p-6 max-w-[1600px] mx-auto">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif tracking-tight">
