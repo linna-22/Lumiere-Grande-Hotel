@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Payments;
 use App\Services\KhqrService;
 use Illuminate\Http\JsonResponse;
@@ -10,14 +11,16 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
-    
-  protected KhqrService $khqrService;
+    protected KhqrService $khqrService;
 
     public function __construct(KhqrService $khqrService)
     {
         $this->khqrService = $khqrService;
     }
 
+    /**
+     * Generate KHQR Payload and record initial pending payment.
+     */
     public function generatePayment(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -30,7 +33,7 @@ class PaymentController extends Controller
         $referenceNo = 'INV-' . $validated['invoice_id'];
         $currency    = $validated['currency'] ?? 'USD';
 
-        // 1. Call KhqrService to generate QR and MD5
+        // 1. Call KhqrService to generate QR string and MD5 hash
         $qrResult = $this->khqrService->generateQr(
             billNumber: $referenceNo,
             amount: (float) $validated['amount'],
@@ -44,20 +47,20 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        // 2. Save payment record in your payments table (Fixed column names)
+        // 2. Save payment record in database
         $payment = Payments::create([
             'reservation_id' => $validated['reservation_id'],
             'invoice_id'     => $validated['invoice_id'],
-            'payment_date'   => now(), // Fixed from 'payments_date'
+            'payment_date'   => now(),
             'amount'         => $validated['amount'],
             'payment_method' => 'bakong_khqr',
-            'payment_type'   => 'room_booking', // Fixed from 'payments_type'
+            'payment_type'   => 'room_booking',
             'reference_no'   => $referenceNo,
             'bakong_hash'    => $qrResult['md5'],
             'status'         => 'pending',
         ]);
 
-        // 3. Return QR data + payment info to frontend
+        // 3. Return QR payload to client
         return response()->json([
             'status'     => 'success',
             'payment_id' => $payment->id,
@@ -67,15 +70,15 @@ class PaymentController extends Controller
         ], 201);
     }
 
-    public function verifyPayment(Request $request): JsonResponse
+    /**
+     * Verify payment status against Bakong Open API via paymentId route parameter.
+     */
+    public function verifyPayment(string $paymentId): JsonResponse
     {
-        $validated = $request->validate([
-            'payment_id' => 'required|exists:payments,id',
-        ]);
+        // 1. Find payment record or throw 404
+        $payment = Payments::with(['reservation', 'invoice'])->findOrFail($paymentId);
 
-        $payment = Payments::with(['reservation', 'invoice'])->findOrFail($validated['payment_id']);
-
-        // 1. Return immediately if already completed
+        // 2. Return immediately if already verified
         if (in_array($payment->status, ['paid', 'completed'])) {
             return response()->json([
                 'status'  => 'success',
@@ -84,7 +87,7 @@ class PaymentController extends Controller
             ]);
         }
 
-        // 2. Ensure we have the saved Bakong MD5 hash
+        // 3. Ensure Bakong MD5 hash exists
         if (!$payment->bakong_hash) {
             return response()->json([
                 'status'  => 'error',
@@ -92,16 +95,14 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        // 3. Query Bakong via KhqrService
+        // 4. Query NBC Bakong API
         $verification = $this->khqrService->verifyTransaction($payment->bakong_hash);
 
-        // 4. Update status across all tables in a transaction block
+        // 5. Update database inside transaction if transfer confirmed
         if ($verification['paid']) {
             DB::transaction(function () use ($payment) {
-                // Update payment status
                 $payment->update(['status' => 'completed']);
 
-                // Recalculate reservation amounts
                 $reservation = $payment->reservation;
                 if ($reservation) {
                     $newPaidAmount = $reservation->paid_amount + $payment->amount;
@@ -132,5 +133,4 @@ class PaymentController extends Controller
             'message' => 'Payment not completed yet.'
         ]);
     }
-
 }
