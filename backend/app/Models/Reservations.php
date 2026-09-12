@@ -14,41 +14,54 @@ class Reservations extends Model
 
     protected $fillable = [
         'guest_id',
-         'reservation_code',
-         'check_in_date',
-         'check_out_date',
-         'adults',
-         'children',
-         'total_amount',
-         'paid_amount',
-         'payment_status',
-         'status',
-         'created_by'
+        'reservation_code',
+        'check_in_date',
+        'check_out_date',
+        'adults',
+        'children',
+        'total_amount',
+        'paid_amount',
+        'payment_status',
+        'status',
+        'created_by'
     ];
 
-    public function guest(): BelongsTo {
+    public function guest(): BelongsTo
+    {
 
-    return $this->belongsTo(Guests::class);
-
-    }
-
-    public function creator(): BelongsTo {
-
-    return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(Guests::class);
 
     }
 
-    public function invoice(): HasOne {
+    public function creator(): BelongsTo
+    {
+
+        return $this->belongsTo(User::class, 'created_by');
+
+    }
+
+    public function invoice(): HasOne
+    {
 
         return $this->hasOne(Invoices::class);
     }
 
-    public function payments(): HasMany {
+    public function payments(): HasMany
+    {
 
-    return $this->hasMany(Payments::class);
+        return $this->hasMany(Payments::class);
     }
 
-    public function revivew(): HasOne {
+    public function reservationRooms(): HasMany
+    {
+        return $this->hasMany(
+            Reservation_rooms::class,
+            'reservation_id'
+        );
+    }
+
+    public function revivew(): HasOne
+    {
         return $this->hasOne(Reviews::class);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Reservation;
 
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -34,6 +34,11 @@ class StoreReservationRequest extends FormRequest
             'guest_details.id_number' => 'nullable|string|max:50',
             'guest_details.nationality' => 'nullable|string|max:100',
 
+            'check_in_date' => 'required|date',
+            'check_out_date' => 'required|date|after:check_in_date',
+            'adults' => 'required|integer|min:1',
+            'children' => 'nullable|integer|min:0',
+
             'rooms' => 'required|array|min:1',
             'rooms.*.room_type_id' => 'required|exists:room_types,id',
             'rooms.*.room_id' => 'nullable|exists:rooms,id',
@@ -41,7 +46,7 @@ class StoreReservationRequest extends FormRequest
 
             'tax' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
-            'payment_option' => 'nullable|string|in:deposit,full', 
+            'payment_option' => 'nullable|string|in:deposit,full',
             'payment_method' => 'required_with:payment_option|string|in:bakong_khqr,credit_card,stripe',
         ];
     }

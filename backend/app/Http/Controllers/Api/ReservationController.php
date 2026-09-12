@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreReservationRequest;
+use App\Http\Requests\Reservation\StoreReservationRequest;
 use App\Models\Guests;
 use App\Models\Invoices;
 use App\Models\Payments;

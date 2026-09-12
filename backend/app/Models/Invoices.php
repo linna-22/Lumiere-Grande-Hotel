@@ -17,28 +17,32 @@ class Invoices extends Model
         'guest_id',
         'invoice_date',
         'due_date',
-        'sub_total',
+        'subtotal',
         'tax',
         'total_amount',
         'status'
     ];
 
-    public function reservation(): BelongsTo {
+    public function reservation(): BelongsTo
+    {
         return $this->belongsTo(Reservations::class);
     }
 
-    public function guest(): BelongsTo {
+    public function guest(): BelongsTo
+    {
         return $this->belongsTo(Guests::class);
     }
 
-    public function items(): HasMany {
-        return $this->hasMany(Invoice_items::class);
+    public function items(): HasMany
+    {
+        return $this->hasMany(
+            Invoice_items::class,
+            'invoice_id'
+        );
     }
 
-    public function payments(): HasMany {
-        
+    public function payments(): HasMany
+    {
         return $this->hasMany(Payments::class);
     }
-
-
 }

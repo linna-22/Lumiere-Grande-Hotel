@@ -21,7 +21,7 @@ class Invoice_items extends Model
 
     public function invoice(): BelongsTo {
 
-    return $this->belongsTo(Invoices::class);
+    return $this->belongsTo(Invoices::class, 'invoice_id');
     
     }
 }

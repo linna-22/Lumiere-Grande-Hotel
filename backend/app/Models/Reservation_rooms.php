@@ -20,21 +20,27 @@ class Reservation_rooms extends Model
         'status'
     ];
 
-    public function reservation(): BelongsTo {
-
-    return $this-> belongsTo(Reservations::class);
-
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(
+            Reservations::class,
+            'reservation_id'
+        );
     }
 
-    public function roomType(): BelongsTo {
-
-    return $this->belongsTo(Rooms::class);
-
+    public function roomType(): BelongsTo
+    {
+        return $this->belongsTo(
+            Room_types::class,
+            'room_type_id'
+        );
     }
 
-    public function room(): BelongsTo {
-
-    return $this->belongsTo(Rooms::class);
-    
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(
+            Rooms::class,
+            'room_id'
+        );
     }
 }
