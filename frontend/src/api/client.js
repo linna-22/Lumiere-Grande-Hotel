@@ -45,3 +45,40 @@ export async function apiFetch(path, options = {}) {
 
   return body
 }
+
+
+// ========================================
+// File Download Helper
+// ========================================
+
+export async function apiDownload(path, options = {}) {
+  const token = getToken()
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Accept:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+    ...options,
+  })
+
+  if (!res.ok) {
+    const contentType = res.headers.get('content-type') || ''
+
+    let body
+
+    if (contentType.includes('application/json')) {
+      body = await res.json()
+    } else {
+      body = await res.text()
+    }
+
+    const message = (body && body.message) || res.statusText
+
+    throw new ApiError(message, res.status, body)
+  }
+
+  return await res.blob()
+}

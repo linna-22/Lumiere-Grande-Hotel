@@ -14,7 +14,7 @@ import {
 import Sidebar from "../../components/layout/Sidebar";
 import TopBar from "../../components/layout/TopBar";
 import { listGuests } from "../../api/admin";
-import { ApiError } from "../../api/client";
+import { ApiError, apiDownload } from "../../api/client";
 
 function initials(name) {
   return (name || "?")
@@ -58,6 +58,7 @@ export default function Guests({ onNavigate }) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
@@ -105,13 +106,30 @@ export default function Guests({ onNavigate }) {
     [pagination.total],
   );
 
-  const handleExportExcel = () => {
-    // Export is a GET route that streams a file download — apiFetch expects JSON,
-    // so this opens the URL directly. Note: this bypasses the Bearer token, so
-    // exportExcel's route will 401 unless it's also reachable via the Sanctum
-    // cookie session (credentials: 'include' won't apply to window.open).
-    const base = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-    window.open(`${base}/admin/guests/export/excel`, "_blank");
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+
+      const blob = await apiDownload("/admin/guests/export/excel");
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "guests.xlsx";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export Guests Excel error:", error);
+
+      alert(error.message || "Failed to export guests.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -146,10 +164,11 @@ export default function Guests({ onNavigate }) {
               </button>
               <button
                 onClick={handleExportExcel}
-                className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors"
+                disabled={exporting}
+                className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FileSpreadsheet size={15} />
-                Export Excel
+                {exporting ? "Exporting..." : "Export Excel"}
               </button>
               <button className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
                 <Printer size={15} />
