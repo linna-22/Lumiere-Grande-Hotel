@@ -17,7 +17,7 @@ class Invoices extends Model
         'guest_id',
         'invoice_date',
         'due_date',
-        'sub_total',
+        'subtotal',
         'tax',
         'total_amount',
         'status'

@@ -47,6 +47,13 @@ return [
         'client_id' => env('FACEBOOK_CLIENT_ID'),
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
+    ],
+
+    'bakong' => [
+        'account_id' => env('BAKONG_ACCOUNT_ID'),
+        'merchant_name' => env('BAKONG_MERCHANT_NAME', 'KethyaRavy Lim'),
+        'merchant_city' => env('BAKONG_MERCHANT_CITY', 'Phnom Penh'),
+        'api_token' => env('BAKONG_API_TOKEN')
     ]
 
 ];

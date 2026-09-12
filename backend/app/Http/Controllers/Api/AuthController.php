@@ -292,7 +292,7 @@ class AuthController extends Controller
 
     public function githubCallback(Request $request)
     {
-        $frontendurl = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
+        $frontendurl = rtrim(env('FRONTEND_URL', 'http://localhost:5173', 'http://localhost:5174'), '/');
 
         try {
             /** @var \Laravel\Socialite\Two\AbstractProvider $driver */

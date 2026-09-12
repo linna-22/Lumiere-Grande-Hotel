@@ -34,6 +34,11 @@ class StoreReservationRequest extends FormRequest
             'guest_details.id_number' => 'nullable|string|max:50',
             'guest_details.nationality' => 'nullable|string|max:100',
 
+            'check_in_date' => 'required|date',
+            'check_out_date' => 'required|date|after:check_in_date',
+            'adults' => 'required|integer|min:1',
+            'children' => 'nullable|integer|min:0',
+            
             'rooms' => 'required|array|min:1',
             'rooms.*.room_type_id' => 'required|exists:room_types,id',
             'rooms.*.room_id' => 'nullable|exists:rooms,id',
