@@ -63,7 +63,7 @@ export default function Sidebar({ open, onClose, active = 'Dashboard', onNavigat
         className={`
           fixed lg:sticky top-0 left-0 z-40 lg:z-auto
           ${collapsed ? 'lg:w-20' : 'lg:w-64'} w-64 shrink-0 flex flex-col
-          bg-base-900 border-r border-base-border h-screen
+          bg-[#091326] border-r border-base-border h-screen
           transition-[transform,width] duration-300 ease-in-out
           ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
         `}
@@ -79,7 +79,7 @@ export default function Sidebar({ open, onClose, active = 'Dashboard', onNavigat
                 <p className="text-white font-bold text-[15px] tracking-tight truncate">
                   LUMIÈRE GRAND
                 </p>
-                <p className="text-amber-400 text-[11px] font-medium">Horel Management System</p>
+                <p className="text-amber-400 text-[11px] font-medium">Hotel Management System</p>
               </div>
             )}
           </div>
