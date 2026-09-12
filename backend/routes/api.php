@@ -127,6 +127,7 @@ Route::apiResource('reservations', ReservationController::class);
 Route::post('reservations/{code}/settle-checkin', [ReservationController::class, 'settleAndCheck']);
 
 Route::prefix('payments/khqr')->group(function () {
+    
     Route::post('/generate', [PaymentController::class, 'generateKhqr']);
     Route::get('/verify/{paymentId}', [PaymentController::class, 'verifyKhqr']);
 });

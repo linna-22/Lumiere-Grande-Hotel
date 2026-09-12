@@ -4,14 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Payments;
 use App\Services\KhqrService;
-use Faker\Provider\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
     
-    protected KhqrService $khqrService;
+  protected KhqrService $khqrService;
 
     public function __construct(KhqrService $khqrService)
     {
@@ -22,7 +22,7 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'reservation_id' => 'required|exists:reservations,id',
-            'invoice_id'     => 'required',
+            'invoice_id'     => 'required|exists:invoices,id',
             'amount'         => 'required|numeric|min:0.01',
             'currency'       => 'nullable|string|in:USD,KHR',
         ]);
@@ -44,16 +44,16 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        // 2. Save payment record in your payments table
-        $payment =  Payments::create([
+        // 2. Save payment record in your payments table (Fixed column names)
+        $payment = Payments::create([
             'reservation_id' => $validated['reservation_id'],
             'invoice_id'     => $validated['invoice_id'],
-            'payments_date'  => now(),
+            'payment_date'   => now(), // Fixed from 'payments_date'
             'amount'         => $validated['amount'],
-            'payment_method' => 'khqr',
-            'payments_type'  => 'room_booking',
+            'payment_method' => 'bakong_khqr',
+            'payment_type'   => 'room_booking', // Fixed from 'payments_type'
             'reference_no'   => $referenceNo,
-            'bakong_hash'    => $qrResult['md5'], // MD5 saved here!
+            'bakong_hash'    => $qrResult['md5'],
             'status'         => 'pending',
         ]);
 
@@ -70,16 +70,13 @@ class PaymentController extends Controller
     public function verifyPayment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-
             'payment_id' => 'required|exists:payments,id',
         ]);
 
-        $payment = Payments::findOrFail($validated['payment_id']);
+        $payment = Payments::with(['reservation', 'invoice'])->findOrFail($validated['payment_id']);
 
-        // $payment = Payment::findOrFail($validated['payment_id']);
-
-        // 1. Return immediately if already verified and marked as paid
-        if ($payment->status === 'paid') {
+        // 1. Return immediately if already completed
+        if (in_array($payment->status, ['paid', 'completed'])) {
             return response()->json([
                 'status'  => 'success',
                 'paid'    => true,
@@ -98,14 +95,29 @@ class PaymentController extends Controller
         // 3. Query Bakong via KhqrService
         $verification = $this->khqrService->verifyTransaction($payment->bakong_hash);
 
-        // 4. Update status if payment succeeded
+        // 4. Update status across all tables in a transaction block
         if ($verification['paid']) {
-            $payment->update([
-                'status' => 'paid',
-            ]);
+            DB::transaction(function () use ($payment) {
+                // Update payment status
+                $payment->update(['status' => 'completed']);
 
-            // Optional: Update room reservation status if needed
-            $payment->reservation()->update(['status' => 'confirmed']);
+                // Recalculate reservation amounts
+                $reservation = $payment->reservation;
+                if ($reservation) {
+                    $newPaidAmount = $reservation->paid_amount + $payment->amount;
+                    $paymentStatus = ($newPaidAmount >= $reservation->total_amount) ? 'paid' : 'partially_paid';
+
+                    $reservation->update([
+                        'paid_amount'    => $newPaidAmount,
+                        'payment_status' => $paymentStatus,
+                        'status'         => 'confirmed',
+                    ]);
+
+                    if ($payment->invoice) {
+                        $payment->invoice->update(['status' => $paymentStatus]);
+                    }
+                }
+            });
 
             return response()->json([
                 'status'  => 'success',
