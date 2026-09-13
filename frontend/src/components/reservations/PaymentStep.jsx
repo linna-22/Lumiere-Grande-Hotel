@@ -18,6 +18,7 @@ export default function PaymentStep({
   const [payment, setPayment] = useState(null)
   const [showQrModal, setShowQrModal] = useState(false)
 
+  //Payment step
   const API_BASE_URL = (
     import.meta.env.VITE_API_URL || '/api'
   ).replace(/\/$/, '')
