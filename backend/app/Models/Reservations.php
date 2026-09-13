@@ -67,10 +67,6 @@ class Reservations extends Model
         return $this->hasOne(Reviews::class);
     }
 
-    public function reservationRooms(): HasMany{
 
-    return $this->hasMany(Reservation_rooms::class, 'reservation_id');
-    
-    }
 
 }

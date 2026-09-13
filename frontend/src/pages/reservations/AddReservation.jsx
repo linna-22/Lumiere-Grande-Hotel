@@ -61,6 +61,10 @@ export default function AddReservation({ onNavigate }) {
     // Payment
     payment_option: "full",
     payment_method: "bakong_khqr",
+
+    // Created reservation / invoice
+    reservation_id: null,
+    invoice_id: null,
   });
 
   const updateForm = (data) => {
@@ -88,18 +92,24 @@ export default function AddReservation({ onNavigate }) {
     setCurrentStep((step) => step - 1);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (submitting) {
       return;
     }
 
-    setCurrentStep((step) => Math.min(3, step + 1));
+    // Room step → create reservation first, then go to payment.
+    if (currentStep === 3) {
+      await handleCreateReservation();
+      return;
+    }
+
+    setCurrentStep((step) => Math.min(4, step + 1));
   };
 
   /*
    * Final reservation submission
    */
-  const handleSubmit = async () => {
+  const handleCreateReservation = async () => {
     if (submitting) {
       return;
     }
@@ -122,17 +132,13 @@ export default function AddReservation({ onNavigate }) {
 
     if (!form.rooms || form.rooms.length === 0) {
       setSubmitError("Please select at least one room.");
+      setCurrentStep(3);
       return;
     }
 
     try {
       setSubmitting(true);
 
-      /*
-       * Payment is intentionally NOT included here.
-       *
-       * Payment will be handled during checkout.
-       */
       const payload = {
         guest_id: form.guest_id || null,
 
@@ -174,28 +180,65 @@ export default function AddReservation({ onNavigate }) {
 
       console.log("Reservation created:", response);
 
-      setSuccessMessage(
-        response?.message || "Reservation created successfully.",
-      );
+      // Support common Laravel response structures.
+      const reservationId =
+        response?.reservation_id ??
+        response?.reservation?.id ??
+        response?.data?.reservation_id ??
+        response?.data?.reservation?.id;
 
-      setShowSuccessModal(true);
+      const invoiceId =
+        response?.invoice_id ??
+        response?.invoice?.id ??
+        response?.data?.invoice_id ??
+        response?.data?.invoice?.id;
 
-      /*
-       * Give the success message a moment to display,
-       * then return to Reservations.
-       */
-      setTimeout(() => {
-        onNavigate?.("Reservations");
-      }, 1200);
+      console.log("Reservation ID:", reservationId);
+      console.log("Invoice ID:", invoiceId);
+
+      if (!reservationId) {
+        throw new Error(
+          "Reservation was created, but reservation ID was not returned by the API."
+        );
+      }
+
+      if (!invoiceId) {
+        throw new Error(
+          "Reservation was created, but invoice ID was not returned by the API."
+        );
+      }
+
+      // Save IDs for PaymentStep.
+      setForm((previous) => ({
+        ...previous,
+        reservation_id: reservationId,
+        invoice_id: invoiceId,
+      }));
+
+      // Go to payment only after IDs are available.
+      setCurrentStep(4);
     } catch (error) {
       console.error("Failed to create reservation:", error);
 
       setSubmitError(
-        error?.message || "Failed to create reservation. Please try again.",
+        error?.message ||
+          "Failed to create reservation. Please try again."
       );
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePaymentComplete = () => {
+    setSuccessMessage(
+      "Reservation and payment completed successfully."
+    );
+
+    setShowSuccessModal(true);
+
+    setTimeout(() => {
+      onNavigate?.("Reservations");
+    }, 1200);
   };
 
   return (
@@ -315,7 +358,7 @@ export default function AddReservation({ onNavigate }) {
                   form={form}
                   onChange={updateForm}
                   onBack={() => setCurrentStep(2)}
-                  onContinue={() => setCurrentStep(4)}
+                  onContinue={handleNext}
                   submitting={submitting}
                 />
               )}
@@ -328,7 +371,7 @@ export default function AddReservation({ onNavigate }) {
                   form={form}
                   onChange={updateForm}
                   onBack={() => setCurrentStep(3)}
-                  onContinue={handleSubmit}
+                  onContinue={handlePaymentComplete}
                 />
               )}
             </div>

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   CreditCard,
   WalletCards,
@@ -13,6 +14,13 @@ export default function PaymentStep({
   onContinue,
 }) {
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [payment, setPayment] = useState(null)
+  const [showQrModal, setShowQrModal] = useState(false)
+
+  const API_BASE_URL = (
+    import.meta.env.VITE_API_URL || '/api'
+  ).replace(/\/$/, '')
 
   const nights = (() => {
     if (!form.check_in_date || !form.check_out_date) {
@@ -82,6 +90,72 @@ export default function PaymentStep({
     setError('')
   }
 
+  /**
+   * Generate KHQR after the reservation and invoice have
+   * already been created by the parent booking flow.
+   */
+  const generateKhqrPayment = async () => {
+    if (!form.reservation_id) {
+      setError('Reservation ID is missing. Please create the reservation first.')
+      return
+    }
+
+    if (!form.invoice_id) {
+      setError('Invoice ID is missing. Please create the invoice first.')
+      return
+    }
+
+    if (amountToPay <= 0) {
+      setError('The payment amount must be greater than zero.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/payments/khqr/generate`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            reservation_id: form.reservation_id,
+            invoice_id: form.invoice_id,
+            amount: Number(amountToPay.toFixed(2)),
+            currency: form.currency || 'USD',
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        const validationMessage = data.errors
+          ? Object.values(data.errors).flat().join(' ')
+          : data.message
+
+        throw new Error(
+          validationMessage || 'Failed to generate KHQR payment.'
+        )
+      }
+
+      if (!data.payment_id || !data.qr_code) {
+        throw new Error('Invalid KHQR response from the server.')
+      }
+
+      setPayment(data)
+      setShowQrModal(true)
+    } catch (err) {
+      setError(err.message || 'Failed to generate KHQR payment.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleContinue = () => {
     if (!form.payment_option) {
       setError('Please select a payment option.')
@@ -94,7 +168,99 @@ export default function PaymentStep({
     }
 
     setError('')
+
+    if (form.payment_method === 'bakong_khqr') {
+      generateKhqrPayment()
+      return
+    }
+
+    // Credit Card / Stripe are not handled by the KHQR API yet.
     onContinue?.()
+  }
+
+  /**
+   * Poll Bakong verification every 3 seconds.
+   * Stop when paid, when the modal closes, or after 5 minutes.
+   */
+  useEffect(() => {
+    if (!showQrModal || !payment?.payment_id) {
+      return undefined
+    }
+
+    let stopped = false
+
+    const verifyPayment = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/payments/khqr/verify/${payment.payment_id}`,
+          {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+            },
+          }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || 'Unable to verify payment.'
+          )
+        }
+
+        if (data.paid === true) {
+          stopped = true
+
+          onContinue?.({
+            ...payment,
+            status: 'completed',
+            paid: true,
+          })
+
+          window.location.href = '/booking/success'
+        }
+      } catch (err) {
+        if (!stopped) {
+          setError(err.message || 'Unable to verify payment.')
+        }
+      }
+    }
+
+    // Verify immediately, then every 3 seconds.
+    verifyPayment()
+
+    const intervalId = setInterval(
+      verifyPayment,
+      3000
+    )
+
+    // Safety rule: stop polling after 5 minutes.
+    const timeoutId = setTimeout(() => {
+      stopped = true
+      clearInterval(intervalId)
+      setShowQrModal(false)
+      setPayment(null)
+      setError(
+        'Payment window expired. Please generate a new KHQR code.'
+      )
+    }, 5 * 60 * 1000)
+
+    return () => {
+      stopped = true
+      clearInterval(intervalId)
+      clearTimeout(timeoutId)
+    }
+  }, [
+    showQrModal,
+    payment?.payment_id,
+    API_BASE_URL,
+    onContinue,
+  ])
+
+  const closeQrModal = () => {
+    setShowQrModal(false)
+    setPayment(null)
   }
 
   return (
@@ -456,12 +622,93 @@ export default function PaymentStep({
         <button
           type="button"
           onClick={handleContinue}
-          className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold text-sm transition-colors"
+          disabled={loading}
+          className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-base-950 font-semibold text-sm transition-colors"
         >
-          Add Reservation
+          {loading
+            ? 'Generating KHQR...'
+            : form.payment_method === 'bakong_khqr'
+              ? 'Generate KHQR'
+              : 'Add Reservation'}
         </button>
 
       </div>
+
+      {/* KHQR Payment Modal */}
+      {showQrModal && payment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-base-900 border border-base-border shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-base-border">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  Scan to Pay
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Scan this KHQR with your Bakong app
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeQrModal}
+                className="text-slate-400 hover:text-white text-xl leading-none"
+                aria-label="Close payment modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex justify-center rounded-xl bg-white p-5">
+                <QRCodeSVG
+                  value={payment.qr_code}
+                  size={260}
+                  level="M"
+                  includeMargin
+                />
+              </div>
+
+              <div className="text-center mt-5">
+                <p className="text-xs text-slate-500">
+                  Amount to pay
+                </p>
+                <p className="text-2xl font-bold text-amber-400 mt-1">
+                  ${amountToPay.toFixed(2)}
+                </p>
+              </div>
+
+              {payment.deeplink && (
+                <a
+                  href={payment.deeplink}
+                  className="mt-5 flex items-center justify-center w-full rounded-lg bg-amber-400 hover:bg-amber-500 px-4 py-3 text-sm font-semibold text-base-950 transition-colors"
+                >
+                  Pay with Bakong App
+                </a>
+              )}
+
+              <div className="mt-5 rounded-lg bg-base-800 border border-base-border p-3">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <p className="text-xs text-slate-400">
+                    Waiting for payment...
+                  </p>
+                </div>
+                <p className="text-[11px] text-slate-500 text-center mt-1">
+                  Payment status is checked every 3 seconds.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeQrModal}
+                className="mt-3 w-full rounded-lg border border-base-border bg-base-800 hover:bg-base-700 px-4 py-2.5 text-sm font-medium text-slate-200 transition-colors"
+              >
+                Cancel Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
