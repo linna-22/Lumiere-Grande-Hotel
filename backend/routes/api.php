@@ -31,7 +31,7 @@ Route::get('/room-types', [RoomTypeController::class, 'index'])->name('room-type
 Route::get('/room-types/{id}', [RoomTypeController::class, 'show'])->name('room-types.show');
 Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
 
-// Rate-Limited Authentication Routes (Max 10 requests per minute)
+
 Route::middleware('throttle:5,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login'); 
@@ -128,6 +128,7 @@ Route::post('reservations/{code}/settle-checkin', [ReservationController::class,
 
 Route::prefix('payments/khqr')->group(function () {
     
-    Route::post('/generate', [PaymentController::class, 'generateKhqr']);
-    Route::get('/verify/{paymentId}', [PaymentController::class, 'verifyKhqr']);
+    Route::post('/generate', [PaymentController::class, 'generatePayment']);
+    Route::get('/verify/{paymentId}', [PaymentController::class, 'verifyPayment']);
+    
 });

@@ -18,9 +18,6 @@ class PaymentController extends Controller
         $this->khqrService = $khqrService;
     }
 
-    /**
-     * Generate KHQR Payload and record initial pending payment.
-     */
     public function generatePayment(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -33,7 +30,6 @@ class PaymentController extends Controller
         $referenceNo = 'INV-' . $validated['invoice_id'];
         $currency    = $validated['currency'] ?? 'USD';
 
-        // 1. Call KhqrService to generate QR string and MD5 hash
         $qrResult = $this->khqrService->generateQr(
             billNumber: $referenceNo,
             amount: (float) $validated['amount'],
