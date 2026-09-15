@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('reservation_id')->constrained('reservations')->cascadeOnDelete();
             $table->foreignId('room_type_id')->constrained('room_types')->cascadeOnDelete();
             $table->foreignId('room_id')->nullable()->constrained('rooms')->nullOnDelete();
-            $table->decimal('nighty_rate', 10, 2);
+            $table->decimal('nightly_rate', 10, 2);
             $table->datetime('actual_check_in')->nullable();
             $table->dateTime('actual_check_out')->nullable();
             $table->string('status')->default('pending');

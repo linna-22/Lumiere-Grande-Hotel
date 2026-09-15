@@ -15,10 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
             $table->foreignId('reservation_id')->nullable()->constrained('reservations')->nullOnDelete();
-            $table->dateTime('payments_date');
+            $table->dateTime('payment_date');
             $table->decimal('amount', 10, 2);
             $table->string('payment_method');
-            $table->string('payments_type');
+            $table->string('payment_type');
             $table->string('reference_no')->nullable()->unique();
             $table->string('bakong_hash')->nullable()->unique();
             $table->string('status')->default('pending');

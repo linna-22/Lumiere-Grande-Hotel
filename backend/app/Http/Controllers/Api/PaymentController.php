@@ -19,62 +19,61 @@ class PaymentController extends Controller
     }
 
     public function generatePayment(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'reservation_id' => 'required|exists:reservations,id',
-            'invoice_id'     => 'required|exists:invoices,id',
-            'amount'         => 'required|numeric|min:0.01',
-            'currency'       => 'nullable|string|in:USD,KHR',
-        ]);
+{
+    $validated = $request->validate([
+        'reservation_id' => 'required|exists:reservations,id',
+        'invoice_id'     => 'required|exists:invoices,id',
+        'amount'         => 'required|numeric|min:0.01',
+        'currency'       => 'nullable|string|in:USD,KHR',
+    ]);
 
-        $referenceNo = 'INV-' . $validated['invoice_id'];
-        $currency    = $validated['currency'] ?? 'USD';
+    $referenceNo = 'INV-' . $validated['invoice_id'];
+    $currency    = $validated['currency'] ?? 'USD';
+    
+    $formattedAmount = number_format((float) $validated['amount'], 2, '.', '');
 
-        $qrResult = $this->khqrService->generateQr(
-            billNumber: $referenceNo,
-            amount: (float) $validated['amount'],
-            currency: $currency
-        );
+    $qrResult = $this->khqrService->generateQr(
+        billNumber: $referenceNo,
+        amount: $formattedAmount,
+        currency: $currency
+    );
 
-        if (!$qrResult['success']) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Failed to generate QR: ' . $qrResult['error']
-            ], 400);
-        }
-
-        // 2. Save payment record in database
-        $payment = Payments::create([
-            'reservation_id' => $validated['reservation_id'],
-            'invoice_id'     => $validated['invoice_id'],
-            'payment_date'   => now(),
-            'amount'         => $validated['amount'],
-            'payment_method' => 'bakong_khqr',
-            'payment_type'   => 'room_booking',
-            'reference_no'   => $referenceNo,
-            'bakong_hash'    => $qrResult['md5'],
-            'status'         => 'pending',
-        ]);
-
-        // 3. Return QR payload to client
+    if (!$qrResult['success']) {
         return response()->json([
-            'status'     => 'success',
-            'payment_id' => $payment->id,
-            'qr_code'    => $qrResult['qr_code'],
-            'md5'        => $qrResult['md5'],
-            'deeplink'   => $qrResult['deeplink'],
-        ], 201);
+            'status'  => 'error',
+            'message' => 'Failed to generate QR: ' . $qrResult['error']
+        ], 400);
     }
 
+    $payment = Payments::create([
+        'reservation_id' => $validated['reservation_id'],
+        'invoice_id'     => $validated['invoice_id'],
+        'payment_date'   => now(),
+        'amount'         => $validated['amount'],
+        'payment_method' => 'bakong_khqr',
+        'payment_type'   => 'room_booking',
+        'reference_no'   => $referenceNo,
+        'bakong_hash'    => $qrResult['md5'],
+        'status'         => 'pending',
+    ]);
+
+    return response()->json([
+        'status'     => 'success',
+        'payment_id' => $payment->id,
+        'qr_code'    => $qrResult['qr_code'],
+        'md5'        => $qrResult['md5'],
+        'deeplink'   => $qrResult['deeplink'],
+    ], 201);
+}
     /**
      * Verify payment status against Bakong Open API via paymentId route parameter.
      */
     public function verifyPayment(string $paymentId): JsonResponse
     {
-        // 1. Find payment record or throw 404
+        
         $payment = Payments::with(['reservation', 'invoice'])->findOrFail($paymentId);
 
-        // 2. Return immediately if already verified
+     
         if (in_array($payment->status, ['paid', 'completed'])) {
             return response()->json([
                 'status'  => 'success',

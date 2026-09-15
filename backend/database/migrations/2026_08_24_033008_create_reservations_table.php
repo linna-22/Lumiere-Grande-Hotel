@@ -25,6 +25,11 @@ return new class extends Migration
             $table->string('status')->default('pending');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+
+            $table->index('check_in_date');  
+            $table->index('check_out_date'); 
+            $table->index('status');         
+            $table->index(['check_in_date', 'status']);
         });
     }
 
