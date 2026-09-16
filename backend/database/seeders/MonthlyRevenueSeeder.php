@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Employee;
-use App\Models\Expense;
 use App\Models\Guests;
 use App\Models\Payments;
 use App\Models\Reservation_rooms;
@@ -11,11 +10,9 @@ use App\Models\Reservations;
 use App\Models\Room_types;
 use App\Models\Rooms;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class MonthlyRevenueSeeder extends Seeder
 {
@@ -24,93 +21,265 @@ class MonthlyRevenueSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Ensure Room Types exist first
-        $deluxe = Room_types::firstOrCreate(
+        /*
+        |--------------------------------------------------------------------------
+        | 1. Ensure Room Types Exist
+        |--------------------------------------------------------------------------
+        */
+
+        $deluxe = Room_types::updateOrCreate(
             ['name' => 'Lumière Classic'],
-            ['base_price' => 55.00]
+            [
+                'base_price' => 55.00,
+            ]
         );
 
-        $suite = Room_types::firstOrCreate(
+        $suite = Room_types::updateOrCreate(
             ['name' => 'Executive Suite'],
-            ['base_price' => 150.00]
+            [
+                'base_price' => 150.00,
+            ]
         );
 
-        $standard = Room_types::firstOrCreate(
+        $standard = Room_types::updateOrCreate(
             ['name' => 'Presidential Suite'],
-            ['base_price' => 300.00]
+            [
+                'base_price' => 300.00,
+            ]
         );
 
-        $standardDiamond = Room_types::firstOrCreate(
+        $standardDiamond = Room_types::updateOrCreate(
             ['name' => 'Demere Classic Diamond'],
-            ['base_price' => 55.00]
+            [
+                'base_price' => 55.00,
+            ]
         );
 
-        $roomTypeIds = [$deluxe->id, $suite->id, $standard->id, $standardDiamond->id];
+        $roomTypeIds = [
+            $deluxe->id,
+            $suite->id,
+            $standard->id,
+            $standardDiamond->id,
+        ];
 
-        // 2. Ensure Rooms exist
+        /*
+        |--------------------------------------------------------------------------
+        | 2. Ensure Rooms Exist
+        |--------------------------------------------------------------------------
+        */
+
         for ($i = 101; $i <= 110; $i++) {
-            Rooms::firstOrCreate(
-                ['room_number' => (string)$i],
+            $roomTypeId = $roomTypeIds[array_rand($roomTypeIds)];
+
+            Rooms::updateOrCreate(
                 [
-                    'room_type_id' => $roomTypeIds[array_rand($roomTypeIds)],
-                    'status'       => 'available',
+                    'room_number' => (string) $i,
+                ],
+                [
+                    'room_type_id' => $roomTypeId,
+                    'status' => 'available',
                 ]
             );
         }
 
+<<<<<<< HEAD
         Rooms::whereNull('room_type_id')->update([
             'room_type_id' => $roomTypeIds[array_rand($roomTypeIds)],
         ]);
+=======
+        /*
+        |--------------------------------------------------------------------------
+        | 3. Load Rooms With Their Room Types
+        |--------------------------------------------------------------------------
+        */
+>>>>>>> 7d8f78e0cb5aad51fad1778c9ad07b40cce552c4
 
         $rooms = Rooms::with('roomType')->get();
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $daysInMonth  = Carbon::now()->daysInMonth;
 
-        // 3. Ensure Guest exists
+        if ($rooms->isEmpty()) {
+            $this->command->error('No rooms found. Seeder stopped.');
+
+            return;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4. Current Month
+        |--------------------------------------------------------------------------
+        */
+
+        $startOfMonth = Carbon::now()->startOfMonth();
+
+        $daysInMonth = Carbon::now()->daysInMonth;
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5. Ensure Guest Exists
+        |--------------------------------------------------------------------------
+        */
+
         $guest = Guests::firstOrCreate(
+<<<<<<< HEAD
             ['email' => 'testguest@hotel.com'],
             [
                 'first_name'  => 'Sample',
                 'last_name'   => 'Guest',
                 'phone'       => '+85586247757',
+=======
+            [
+                'email' => 'testguest@hotel.com',
+            ],
+            [
+                'first_name' => 'Sample',
+                'last_name' => 'Guest',
+                'phone' => '+85586247757',
+>>>>>>> 7d8f78e0cb5aad51fad1778c9ad07b40cce552c4
                 'nationality' => 'Cambodia',
             ]
         );
 
-        // 4. Generate Reservations & Payments (Revenue Data)
-        for ($i = 1; $i <= 20; $i++) {
-            $checkIn  = $startOfMonth->copy()->addDays(rand(0, $daysInMonth - 3));
-            $checkOut = $checkIn->copy()->addDays(rand(1, 3));
-            $room     = $rooms->random();
-            $amount   = 100.00 * $checkIn->diffInDays($checkOut);
+        /*
+        |--------------------------------------------------------------------------
+        | 6. Generate Reservations & Payments
+        |--------------------------------------------------------------------------
+        */
 
-            // Create Reservation
+        for ($i = 1; $i <= 20; $i++) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Select Room
+            |--------------------------------------------------------------------------
+            */
+
+            $room = $rooms->random();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Make Sure Room Has A Room Type
+            |--------------------------------------------------------------------------
+            */
+
+            if (!$room->roomType) {
+                $this->command->warn(
+                    "Room {$room->room_number} does not have a valid room type. Skipping."
+                );
+
+                continue;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Room Pricing
+            |--------------------------------------------------------------------------
+            */
+
+            $nightlyRate = (float) $room->roomType->base_price;
+
+            if ($nightlyRate <= 0) {
+                $this->command->warn(
+                    "Room {$room->room_number} has an invalid nightly rate. Skipping."
+                );
+
+                continue;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Generate Dates
+            |--------------------------------------------------------------------------
+            */
+
+            $checkIn = $startOfMonth
+                ->copy()
+                ->addDays(rand(0, max(0, $daysInMonth - 3)));
+
+            $numberOfNights = rand(1, 3);
+
+            $checkOut = $checkIn
+                ->copy()
+                ->addDays($numberOfNights);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Calculate Reservation Amount
+            |--------------------------------------------------------------------------
+            */
+
+            $amount = $nightlyRate * $numberOfNights;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Reservation
+            |--------------------------------------------------------------------------
+            */
+
             $reservation = Reservations::create([
                 'reservation_code' => 'RES-' . strtoupper(Str::random(6)),
-                'guest_id'         => $guest->id,
-                'check_in_date'    => $checkIn->toDateString(),
-                'check_out_date'   => $checkOut->toDateString(),
-                'adults'           => 2,
-                'children'         => 0,
-                'total_amount'     => $amount,
-                'paid_amount'      => $amount,
-                'payment_status'   => 'paid',
-                'status'           => 'checked_out',
+
+                'guest_id' => $guest->id,
+
+                'check_in_date' => $checkIn->toDateString(),
+
+                'check_out_date' => $checkOut->toDateString(),
+
+                'adults' => 2,
+
+                'children' => 0,
+
+                'total_amount' => $amount,
+
+                'paid_amount' => $amount,
+
+                'payment_status' => 'paid',
+
+                'status' => 'checked_out',
             ]);
 
-            // Connect Room via Pivot Table
+            /*
+            |--------------------------------------------------------------------------
+            | Connect Reservation To Room
+            |--------------------------------------------------------------------------
+            */
+
             Reservation_rooms::create([
+<<<<<<< HEAD
                 'reservation_id'   => $reservation->id,
                 'room_id'          => $room->id,
                 'room_type_id'     => $room->room_type_id,
                 'actual_check_in'  => $checkIn->toDateString(),
                 'actual_check_out' => $checkOut->toDateString(),
                 'nightly_rate'     => $amount,
+=======
+                'reservation_id' => $reservation->id,
+
+                'room_id' => $room->id,
+
+                'room_type_id' => $room->room_type_id,
+
+                'actual_check_in' => $checkIn,
+
+                'actual_check_out' => $checkOut,
+
+                'nightly_rate' => $nightlyRate,
+
+                'status' => 'checked_out',
+>>>>>>> 7d8f78e0cb5aad51fad1778c9ad07b40cce552c4
             ]);
 
-            // Create Payment record
+            /*
+            |--------------------------------------------------------------------------
+            | Create Payment
+            |--------------------------------------------------------------------------
+            |
+            | invoice_id is set to null because this seeder does not create
+            | invoice records.
+            |
+            */
+
             Payments::create([
                 'reservation_id' => $reservation->id,
+<<<<<<< HEAD
                 'invoice_id'     => $i,
                 'payment_date'   => $checkIn,
                 'amount'         => $amount,
@@ -121,37 +290,127 @@ class MonthlyRevenueSeeder extends Seeder
                 'status'         => 'completed',
                 'created_at'     => $checkIn,
                 'updated_at'     => $checkIn,
+=======
+
+                'invoice_id' => null,
+
+                'amount' => $amount,
+
+                'payment_method' => rand(1, 10) <= 7
+                    ? 'bakong_khqr'
+                    : 'cash',
+
+                'payment_type' => 'room_booking',
+
+                'reference_no' =>
+                    'SEED-' .
+                    now()->format('YmdHis') .
+                    '-' .
+                    $i .
+                    '-' .
+                    Str::upper(Str::random(4)),
+
+                'bakong_hash' => Str::random(32),
+
+                'status' => 'completed',
+
+                // Required by payments table
+                'payment_date' => $checkIn->toDateString(),
+
+                'created_at' => $checkIn,
+
+                'updated_at' => $checkIn,
+>>>>>>> 7d8f78e0cb5aad51fad1778c9ad07b40cce552c4
             ]);
         }
 
-        // 5. Seed Staff & Employee Profiles
+        /*
+        |--------------------------------------------------------------------------
+        | 7. Seed Staff & Employee Profiles
+        |--------------------------------------------------------------------------
+        */
+
         $staffData = [
+<<<<<<< HEAD
             ['name' => 'John Receptionist', 'first_name' => 'John',   'last_name' => 'Receptionist', 'email' => 'john.staff@hotel.com', 'role' => 'manager',      'position' => 'manager',      'salary' => 600.00],
             ['name' => 'Sophea Cleaner',    'first_name' => 'Sophea', 'last_name' => 'Cleaner',      'email' => 'sophea.staff@hotel.com',  'role' => 'receptionist', 'position' => 'receptionist', 'salary' => 450.00],
             ['name' => 'Dara Technician',   'first_name' => 'Dara',   'last_name' => 'Technician',   'email' => 'dara.staff@hotel.com',   'role' => 'cashier',      'position' => 'cashier',      'salary' => 550.00],
+=======
+            [
+                'name' => 'John Receptionist',
+                'email' => 'john.staff@hotel.com',
+                'role' => 'manager',
+                'position' => 'manager',
+                'salary' => 600.00,
+            ],
+
+            [
+                'name' => 'Sophea Cleaner',
+                'email' => 'sophea.staff@hotel.com',
+                'role' => 'receptionist',
+                'position' => 'receptionist',
+                'salary' => 450.00,
+            ],
+
+            [
+                'name' => 'Dara Technician',
+                'email' => 'dara.staff@hotel.com',
+                'role' => 'cashier',
+                'position' => 'cashier',
+                'salary' => 550.00,
+            ],
+>>>>>>> 7d8f78e0cb5aad51fad1778c9ad07b40cce552c4
         ];
 
         foreach ($staffData as $data) {
+
             $user = User::firstOrCreate(
-                ['email' => $data['email']],
                 [
-                    'name'     => $data['name'],
+                    'email' => $data['email'],
+                ],
+                [
+                    'name' => $data['name'],
                     'password' => bcrypt('password'),
-                    'role'     => $data['role'],
+                    'role' => $data['role'],
                 ]
             );
 
+            $nameParts = explode(' ', $data['name'], 2);
+
             Employee::firstOrCreate(
-                ['user_id' => $user->id],
                 [
+<<<<<<< HEAD
                     'first_name' => $data['first_name'],
                     'last_name'  => $data['last_name'],
                     'position'  => $data['position'],
                     'salary'    => $data['salary'],
                     'hire_date' => $startOfMonth->copy()->subMonths(6)->toDateString(),
                     'status'    => 'active',
+=======
+                    'user_id' => $user->id,
+                ],
+                [
+                    'first_name' => $nameParts[0],
+                    'last_name' => $nameParts[1] ?? '',
+                    'position' => $data['position'],
+                    'salary' => $data['salary'],
+                    'hire_date' => $startOfMonth
+                        ->copy()
+                        ->subMonths(6)
+                        ->toDateString(),
+                    'status' => 'active',
+>>>>>>> 7d8f78e0cb5aad51fad1778c9ad07b40cce552c4
                 ]
             );
         }
+        /*
+        |--------------------------------------------------------------------------
+        | Done
+        |--------------------------------------------------------------------------
+        */
+
+        $this->command->info(
+            'Monthly revenue seeder completed successfully.'
+        );
     }
 }
