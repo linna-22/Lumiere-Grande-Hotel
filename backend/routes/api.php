@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
+use App\Http\Controllers\Api\MonthlyRevenueController;
 use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
 use App\Http\Controllers\Api\ReservationController;
 use App\Models\Guests;
@@ -31,7 +32,6 @@ Route::get('/room-types', [RoomTypeController::class, 'index'])->name('room-type
 Route::get('/room-types/{id}', [RoomTypeController::class, 'show'])->name('room-types.show');
 Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
 
-
 Route::middleware('throttle:5,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login'); 
@@ -40,6 +40,7 @@ Route::middleware('throttle:5,1')->group(function () {
 
 // OAuth Routes (Google, GitHub, Facebook)
 Route::prefix('auth')->group(function () {
+    
     Route::get('/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
     Route::get('/google/callback', [AuthController::class, 'googleCallback'])->name('auth.google.callback');
 
@@ -48,6 +49,7 @@ Route::prefix('auth')->group(function () {
 
     Route::get('/facebook', [AuthController::class, 'redirectFacebook'])->name('auth.facebook');
     Route::get('/facebook/callback', [AuthController::class, 'facebookCallback'])->name('auth.facebook.callback');
+
 });
 
 /*
@@ -68,7 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
-
+ 
     // Guest Profile Management
     Route::get('/guest/profile', [GuestController::class, 'showProfile'])->name('guest.profile');
     Route::put('/guest/profile', [GuestController::class, 'updateProfile'])->name('guest.profile.update');
@@ -121,6 +123,8 @@ Route::middleware('auth:sanctum')->group(function() {
 
     Route::get('/reservation', [ReservationController::class, 'index'])->name('reservation.index');
     Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
+    
+
 });
 
 Route::apiResource('reservations', ReservationController::class);
@@ -128,7 +132,15 @@ Route::post('reservations/{code}/settle-checkin', [ReservationController::class,
 
 Route::prefix('payments/khqr')->group(function () {
     
-    Route::post('/generate', [PaymentController::class, 'generatePayment']);
+    Route::post('/generate', [PaymentController::class, 'generatePayment'])->name('generate.qr');
     Route::get('/verify/{paymentId}', [PaymentController::class, 'verifyPayment']);
     
+});
+
+Route::get('invoice', [PaymentController::class, 'invoice'])->name('invoice');
+
+Route::middleware(['auth:sanctum'])->group(function() {
+
+Route::get('/analytics/monthly-revenue', [MonthlyRevenueController::class, 'getMonthlyRevenue'])->name('api.analytics.monthly-revenue');
+
 });
