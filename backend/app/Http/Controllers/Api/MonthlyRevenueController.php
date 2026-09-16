@@ -14,8 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class MonthlyRevenueController extends Controller
 {
-
-  public function getMonthlyRevenue(Request $request)
+public function getMonthlyRevenue(Request $request)
     {
         // 1. Validate inputs
         $request->validate([
@@ -34,14 +33,11 @@ class MonthlyRevenueController extends Controller
 
         $totalDays = $startDate->diffInDays($endDate) + 1;
 
-        // 3. Hotel Capacity
-        $totalRooms = Rooms::where('status', '!=', 'maintenance')->count();
-        $totalAvailableRoomNights = $totalRooms * $totalDays;
-        
-        $totalRooms = Rooms::where('status', '!=', 'maintenance')->count();
-        $totalAvailableRoomNights = $totalRooms * $totalDays;
-
+        // 3. Hotel Capacity & Room Real-time Status Breakdown
         $totalRoomsCount = Rooms::count();
+        $totalAvailableRooms = Rooms::where('status', '!=', 'maintenance')->count();
+        $totalAvailableRoomNights = $totalAvailableRooms * $totalDays;
+
         $roomStatusCounts = Rooms::select('status', DB::raw('COUNT(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status');
@@ -58,7 +54,7 @@ class MonthlyRevenueController extends Controller
                 'maintenance'  => $totalRoomsCount > 0 ? round((($roomStatusCounts['maintenance'] ?? 0) / $totalRoomsCount) * 100, 1) : 0,
             ]
         ];
-        
+
         // 4. Revenue Aggregation
         $completedPayments = Payments::where('status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate]);
@@ -70,44 +66,7 @@ class MonthlyRevenueController extends Controller
             ->groupBy('payment_method')
             ->get();
 
-        // 5. Operational Expenses
-        $expensesQuery = Expense::whereBetween('expense_date', [
-            $startDate->toDateString(), 
-            $endDate->toDateString()
-        ]);
-
-        $operationalExpenses = (float) (clone $expensesQuery)->sum('amount');
-
-        $expenseBreakdown = (clone $expensesQuery)
-            ->select('category', DB::raw('SUM(amount) as total'))
-            ->groupBy('category')
-            ->get()
-            ->toArray();
-
-       
-        // 6. Pro-rated Payroll Expenses
-         $staffRoles = ['manager', 'receptionist', 'cashier', 'staff'];
-        $monthlyPayroll = (float) Employee::where('status', 'active')
-            ->whereHas('user', function ($query) use ($staffRoles) {
-                $query->whereIn('role', $staffRoles);
-            })
-            ->sum('salary');
-        $proRatedPayroll = ($monthlyPayroll / 30) * $totalDays;
-
-        if ($proRatedPayroll > 0) {
-            $expenseBreakdown[] = [
-                'category' => 'salaries',
-                'total'    => round($proRatedPayroll, 2),
-            ];
-        }
-
-        $totalExpenses = $operationalExpenses + $proRatedPayroll;
-
-        // 7. Net Profit Calculations
-        $netProfit = $totalRevenue - $totalExpenses;
-        $profitMargin = $totalRevenue > 0 ? ($netProfit / $totalRevenue) * 100 : 0;
-
-        // 8. Rooms Sold (SQL DATEDIFF Join)
+        // 5. Rooms Sold Calculation (SQL DATEDIFF)
         $roomsSold = (int) DB::table('reservation_rooms')
             ->join('reservations', 'reservation_rooms.reservation_id', '=', 'reservations.id')
             ->where('reservations.status', '!=', 'cancelled')
@@ -117,7 +76,7 @@ class MonthlyRevenueController extends Controller
             ])
             ->sum(DB::raw('DATEDIFF(reservations.check_out_date, reservations.check_in_date)'));
 
-        // 9. Hospitality KPIs
+        // 6. Hospitality KPI Metrics
         $occupancyRate = $totalAvailableRoomNights > 0 
             ? ($roomsSold / $totalAvailableRoomNights) * 100 
             : 0;
@@ -125,53 +84,36 @@ class MonthlyRevenueController extends Controller
         $adr    = $roomsSold > 0 ? ($totalRevenue / $roomsSold) : 0;
         $revPar = $totalAvailableRoomNights > 0 ? ($totalRevenue / $totalAvailableRoomNights) : 0;
 
-        // 10. Comparative Daily Trends
+        // 7. Daily Revenue Trends
         $dailyRevenue = Payments::where('status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(amount) as revenue'))
             ->groupBy('date')
             ->pluck('revenue', 'date');
 
-        $dailyExpenses = Expense::whereBetween('expense_date', [
-                $startDate->toDateString(),
-                $endDate->toDateString()
-            ])
-            ->select('expense_date as date', DB::raw('SUM(amount) as expense'))
-            ->groupBy('expense_date')
-            ->pluck('expense', 'date');
-
-        $dailyPayrollShare = $proRatedPayroll / max($totalDays, 1);
-
         $dailyTrends = [];
         $currentDate = $startDate->copy();
 
         while ($currentDate->lte($endDate)) {
             $formattedDate = $currentDate->toDateString();
-            $dayRev = (float) ($dailyRevenue[$formattedDate] ?? 0);
-            $dayExp = (float) ($dailyExpenses[$formattedDate] ?? 0) + $dailyPayrollShare;
-
             $dailyTrends[] = [
                 'date'    => $formattedDate,
-                'revenue' => round($dayRev, 2),
-                'expense' => round($dayExp, 2),
-                'profit'  => round($dayRev - $dayExp, 2),
+                'revenue' => round((float) ($dailyRevenue[$formattedDate] ?? 0), 2),
             ];
             $currentDate->addDay();
         }
 
+        // 8. Dynamic JSON Response
         return response()->json([
             'period' => [
                 'start_date' => $startDate->toDateString(),
                 'end_date'   => $endDate->toDateString(),
                 'total_days' => $totalDays,
             ],
-            'financials' => [
+            'room_status' => $roomStatus,
+            'financials'  => [
                 'total_revenue'     => round($totalRevenue, 2),
-                'total_expenses'    => round($totalExpenses, 2),
-                'net_profit'        => round($netProfit, 2),
-                'profit_margin'     => round($profitMargin, 2) . '%',
                 'payment_breakdown' => $paymentBreakdown,
-                'expense_breakdown' => $expenseBreakdown,
             ],
             'kpis' => [
                 'rooms_sold'                  => $roomsSold,
@@ -183,5 +125,7 @@ class MonthlyRevenueController extends Controller
             'daily_trends' => $dailyTrends,
         ]);
     }
-    }
+}
+    
+    
 

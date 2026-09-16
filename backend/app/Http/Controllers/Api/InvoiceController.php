@@ -60,10 +60,16 @@ class InvoiceController extends Controller
                         : 'N/A',
                 ],
                 'total_amount'   => (float) $invoices->total_amount,
-                'status'         => strtoupper($invoices->status), // PAID, PARTIAL, UNPAID
+                'status'         => strtoupper($invoices->status), 
                 'date'           => $invoices->created_at->format('Y-m-d'),
             ];
     });
 
-   
+    
+    }
+
+    // public function show(string $id): JsonResponse {
+
+    
+    // }
 }
