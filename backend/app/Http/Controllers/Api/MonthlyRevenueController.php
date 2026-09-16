@@ -37,7 +37,7 @@ class MonthlyRevenueController extends Controller
         // 3. Hotel Capacity
         $totalRooms = Rooms::where('status', '!=', 'maintenance')->count();
         $totalAvailableRoomNights = $totalRooms * $totalDays;
-
+    
         // 4. Revenue Aggregation
         $completedPayments = Payments::where('status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate]);
