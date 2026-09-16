@@ -23,14 +23,6 @@ export function useAuth() {
   // ========================================
 
   const extractUser = (response) => {
-    /**
-     * Support different possible Laravel response formats:
-     *
-     * { data: {...} }
-     * { user: {...} }
-     * {...user fields...}
-     */
-
     if (response?.data) {
       return response.data
     }
@@ -50,10 +42,6 @@ export function useAuth() {
   const checkSession = useCallback(async () => {
     const token = getToken()
 
-    // console.log('[Auth] Checking session...')
-    // console.log('[Auth] Token exists:', Boolean(token))
-
-    // No token
     if (!token) {
       console.log('[Auth] No valid token found.')
 
@@ -66,21 +54,22 @@ export function useAuth() {
     try {
       const response = await apiFetch('/user/me')
 
-      // console.log('[Auth] /user/me response:', response)
-
       const currentUser = extractUser(response)
 
-      // console.log('[Auth] Current user:', currentUser)
-
       if (!currentUser) {
-        throw new Error('User information was not returned.')
+        throw new Error(
+          'User information was not returned.'
+        )
       }
 
       setUser(currentUser)
 
       return currentUser
     } catch (err) {
-      console.error('[Auth] Session check failed:', err)
+      console.error(
+        '[Auth] Session check failed:',
+        err
+      )
 
       clearToken()
       setUser(null)
@@ -118,9 +107,7 @@ export function useAuth() {
         }),
       })
 
-      // console.log('[Auth] Login response:', response)
-
-      /**
+      /*
        * If 2FA is required, Laravel does not
        * return the final access token yet.
        */
@@ -167,14 +154,32 @@ export function useAuth() {
 
       if (response.access_token) {
         setToken(response.access_token)
+
+        /*
+         * If register returned the user,
+         * use it directly.
+         */
+        const currentUser =
+          response.user ??
+          response.data ??
+          null
+
+        if (currentUser) {
+          setUser(currentUser)
+
+          return response
+        }
+
+        /*
+         * Otherwise get the authenticated user.
+         */
+        const meResponse =
+          await apiFetch('/user/me')
+
+        setUser(
+          extractUser(meResponse)
+        )
       }
-
-      const currentUser =
-        response.user ??
-        response.data ??
-        response
-
-      setUser(currentUser)
 
       return response
     },
@@ -190,27 +195,64 @@ export function useAuth() {
     async ({ email, otp_code }) => {
       setError(null)
 
-      const response = await apiFetch('/verify-otp', {
-        method: 'POST',
+      const response = await apiFetch(
+        '/verify-otp',
+        {
+          method: 'POST',
 
-        body: JSON.stringify({
-          email,
-          otp_code,
-        }),
-      })
+          body: JSON.stringify({
+            email,
+            otp_code,
+          }),
+        }
+      )
 
-      if (response.access_token) {
-        setToken(response.access_token)
+      /*
+       * OTP verification should return
+       * the final access token.
+       */
+      if (!response.access_token) {
+        throw new Error(
+          'OTP verified, but no access token was returned.'
+        )
       }
 
-      const currentUser =
-        response.user ??
-        response.data ??
-        null
+      /*
+       * Save the final authenticated token.
+       */
+      setToken(response.access_token)
 
+      /*
+       * IMPORTANT:
+       *
+       * Do NOT assume the OTP response contains
+       * the complete user object.
+       *
+       * Fetch the authenticated admin from /user/me.
+       */
+      const meResponse =
+        await apiFetch('/user/me')
+
+      const currentUser =
+        extractUser(meResponse)
+
+      if (!currentUser) {
+        clearToken()
+
+        throw new Error(
+          'Unable to retrieve authenticated user.'
+        )
+      }
+
+      /*
+       * Now React knows the user is authenticated.
+       */
       setUser(currentUser)
 
-      return response
+      return {
+        ...response,
+        user: currentUser,
+      }
     },
     [],
   )
@@ -220,18 +262,24 @@ export function useAuth() {
   // Logout
   // ========================================
 
-  const logout = useCallback(async () => {
-    try {
-      await apiFetch('/logout', {
-        method: 'POST',
-      })
-    } catch (err) {
-      console.error('[Auth] Logout request failed:', err)
-    } finally {
-      clearToken()
-      setUser(null)
-    }
-  }, [])
+  const logout = useCallback(
+    async () => {
+      try {
+        await apiFetch('/logout', {
+          method: 'POST',
+        })
+      } catch (err) {
+        console.error(
+          '[Auth] Logout request failed:',
+          err
+        )
+      } finally {
+        clearToken()
+        setUser(null)
+      }
+    },
+    [],
+  )
 
 
   return {
