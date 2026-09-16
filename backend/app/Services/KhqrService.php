@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use Exception;
 use KHQR\BakongKHQR;
 use KHQR\Helpers\KHQRData;
 use KHQR\Models\IndividualInfo;
 use KHQR\Models\MerchantInfo;
-use Exception;
 
 class KhqrService
 {
@@ -24,7 +24,7 @@ class KhqrService
     }
 
     /**
-     * Generate an EMVCo-compliant KHQR string & MD5 hash.
+     * Generate a dynamic KHQR with a fixed amount.
      */
     public function generateQr(string $billNumber, float $amount, string $currency = 'USD'): array
     {
@@ -51,7 +51,6 @@ class KhqrService
                     billNumber: $billNumber,
                     mobileNumber: ''
                 );
-                $response = BakongKHQR::generateMerchant($merchantInfo);
             } else {
                 // Fully named arguments for IndividualInfo
                 $individualInfo = new IndividualInfo(
@@ -63,7 +62,6 @@ class KhqrService
                     billNumber: $billNumber,
                     storeLabel: null
                 );
-                $response = BakongKHQR::generateIndividual($individualInfo);
             }
 
             // Extract payload from SDK response
@@ -83,10 +81,11 @@ class KhqrService
                 'md5'      => $md5,
                 'deeplink' => "https://bakong.page.link/pay?qr=" . urlencode($qrData),
             ];
+
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -99,31 +98,35 @@ class KhqrService
         if (!$this->apiToken) {
             return [
                 'success' => false,
-                'paid'    => false,
-                'status'  => 'PENDING',
-                'message' => 'Bakong API Token is missing in configuration.'
+                'paid' => false,
+                'status' => 'PENDING',
+                'message' => 'Bakong API Token is missing in configuration.',
             ];
         }
 
         try {
-            $bakongKhqr = new BakongKHQR($this->apiToken);
-            $response   = $bakongKhqr->checkTransactionByMD5($md5Hash);
+            $bakongKhqr = new BakongKHQR(
+                $this->apiToken
+            );
 
             $status = $response->data['status'] ?? 'PENDING';
             $isPaid = in_array($status, ['SUCCESS', '0', 0], true);
 
             return [
                 'success' => true,
-                'paid'    => $isPaid,
-                'status'  => $isPaid ? 'SUCCESS' : 'PENDING',
-                'raw'     => $response->data ?? []
+                'paid' => $isPaid,
+                'status' => $isPaid
+                    ? 'SUCCESS'
+                    : 'PENDING',
+                'raw' => $response->data ?? [],
             ];
+
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'paid'    => false,
-                'status'  => 'PENDING',
-                'error'   => $e->getMessage()
+                'paid' => false,
+                'status' => 'PENDING',
+                'error' => $e->getMessage(),
             ];
         }
     }
