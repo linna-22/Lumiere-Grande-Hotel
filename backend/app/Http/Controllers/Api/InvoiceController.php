@@ -68,8 +68,45 @@ class InvoiceController extends Controller
     
     }
 
-    // public function show(string $id): JsonResponse {
+    public function show(string $id): JsonResponse {
+
+    $invoice = Invoices::with([
+        'reservation.guest',
+        'reservation.room'
+    ])->findOrFail($id);
+
+    return response()->json([
+        'status' => 'success',
+       'data'   => [
+                'id'             => $invoice->id,
+                'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoice->id),
+                'status'         => strtoupper($invoice->status),
+                'created_at'     => $invoice->created_at->format('Y-m-d H:i'),
+                'guest'          => [
+                    'name'  => $invoice->reservation->guest->name ?? 'N/A',
+                    'email' => $invoice->reservation->guest->email ?? 'N/A',
+                    'phone' => $invoice->reservation->guest->phone ?? 'N/A',
+                ],
+                'room'           => [
+                    'number' => $invoice->reservation->room->room_number ?? 'N/A',
+                    'type'   => $invoice->reservation->room->room_type ?? 'N/A',
+                ],
+                'stay'           => [
+                    'check_in'  => $invoice->reservation->check_in_date,
+                    'check_out' => $invoice->reservation->check_out_date,
+                    'nights'    => $invoice->reservation->total_nights ?? 1,
+                ],
+                'pricing'        => [
+                    'subtotal'  => (float) $invoice->subtotal,
+                    'tax'       => (float) $invoice->tax,
+                    'total'     => (float) $invoice->total_amount,
+                    'paid'      => (float) $invoice->payments->where('status', 'completed')->sum('amount'),
+                    'balance'   => (float) ($invoice->total_amount - $invoice->payments->where('status', 'completed')->sum('amount')),
+                ],
+                'payments'       => $invoice->payments,
+            ],
+    ]);
 
     
-    // }
+    }
 }

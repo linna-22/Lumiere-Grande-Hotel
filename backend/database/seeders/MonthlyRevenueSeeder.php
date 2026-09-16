@@ -47,12 +47,12 @@ class MonthlyRevenueSeeder extends Seeder
 
         $roomTypeIds = [$deluxe->id, $suite->id, $standard->id, $standardDiamond->id];
 
-        
+        // 2. Ensure Rooms exist
         for ($i = 101; $i <= 110; $i++) {
             Rooms::firstOrCreate(
                 ['room_number' => (string)$i],
                 [
-                    '' => $roomTypeIds[array_rand($roomTypeIds)],
+                    'room_type_id' => $roomTypeIds[array_rand($roomTypeIds)],
                     'status'       => 'available',
                 ]
             );
@@ -62,8 +62,7 @@ class MonthlyRevenueSeeder extends Seeder
         $startOfMonth = Carbon::now()->startOfMonth();
         $daysInMonth  = Carbon::now()->daysInMonth;
 
-        // 3. Generate Reservations & Payments
-
+        // 3. Ensure Guest exists
         $guest = Guests::firstOrCreate(
             ['email' => 'testguest@hotel.com'],
             [   
@@ -74,6 +73,7 @@ class MonthlyRevenueSeeder extends Seeder
             ]
         );
 
+        // 4. Generate Reservations & Payments (Revenue Data)
         for ($i = 1; $i <= 20; $i++) {
             $checkIn  = $startOfMonth->copy()->addDays(rand(0, $daysInMonth - 3));
             $checkOut = $checkIn->copy()->addDays(rand(1, 3));
@@ -83,7 +83,7 @@ class MonthlyRevenueSeeder extends Seeder
             // Create Reservation
             $reservation = Reservations::create([
                 'reservation_code' => 'RES-' . strtoupper(Str::random(6)),
-                'guest_id' => $guest->id,
+                'guest_id'         => $guest->id,
                 'check_in_date'    => $checkIn->toDateString(),
                 'check_out_date'   => $checkOut->toDateString(),
                 'adults'           => 2,
@@ -96,11 +96,11 @@ class MonthlyRevenueSeeder extends Seeder
 
             // Connect Room via Pivot Table
             Reservation_rooms::create([
-                'reservation_id' => $reservation->id,
-                'room_id'        => $room->id,
+                'reservation_id'   => $reservation->id,
+                'room_id'          => $room->id,
                 'actual_check_in'  => $checkIn->toDateString(),
                 'actual_check_out' => $checkOut->toDateString(),
-                'nightly_rate'   => $amount,
+                'nightly_rate'     => $amount,
             ]);
 
             // Create Payment record
@@ -118,25 +118,11 @@ class MonthlyRevenueSeeder extends Seeder
             ]);
         }
 
-        // 4. Seed Operational Expenses across the month
-        $categories = ['utilities', 'maintenance', 'supplies', 'marketing'];
-        
-        for ($e = 1; $e <= 8; $e++) {
-            $expenseDate = $startOfMonth->copy()->addDays(rand(1, $daysInMonth - 1));
-            Expense::create([
-                'title'        => 'Operational Expense #' . $e,
-                'category'     => $categories[array_rand($categories)],
-                'amount'       => rand(100, 500) + (rand(0, 99) / 100),
-                'expense_date' => $expenseDate->toDateString(),
-                'notes'        => 'Seeded operational cost for analytics testing.',
-            ]);
-        }
-
-        // 5. Seed Staff & Employee Profiles for Payroll Calculation
+        // 5. Seed Staff & Employee Profiles
         $staffData = [
-            ['name' => 'John Receptionist', 'email' => 'john.staff@hotel.com', 'position' => 'manager', 'salary' => 600.00],
-            ['name' => 'Sophea Cleaner',     'email' => 'sophea.staff@hotel.com', 'position' => 'receptionist', 'salary' => 450.00],
-            ['name' => 'Dara Technician',   'email' => 'dara.staff@hotel.com',   'position' => 'cashier',    'salary' => 550.00],
+            ['name' => 'John Receptionist', 'email' => 'john.staff@hotel.com', 'role' => 'manager',      'position' => 'manager',      'salary' => 600.00],
+            ['name' => 'Sophea Cleaner',    'email' => 'sophea.staff@hotel.com',  'role' => 'receptionist', 'position' => 'receptionist', 'salary' => 450.00],
+            ['name' => 'Dara Technician',   'email' => 'dara.staff@hotel.com',   'role' => 'cashier',      'position' => 'cashier',      'salary' => 550.00],
         ];
 
         foreach ($staffData as $data) {

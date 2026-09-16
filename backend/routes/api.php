@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
+use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MonthlyRevenueController;
 use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
 use App\Http\Controllers\Api\ReservationController;
@@ -137,10 +138,14 @@ Route::prefix('payments/khqr')->group(function () {
     
 });
 
-Route::get('invoice', [PaymentController::class, 'invoice'])->name('invoice');
-
 Route::middleware(['auth:sanctum'])->group(function() {
 
 Route::get('/analytics/monthly-revenue', [MonthlyRevenueController::class, 'getMonthlyRevenue'])->name('api.analytics.monthly-revenue');
 
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+
+    Route::get('/invoices', [InvoiceController::class, 'index']);
+    Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
 });
