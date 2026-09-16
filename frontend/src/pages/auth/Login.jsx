@@ -41,39 +41,72 @@ function GitHubIcon(props) {
 
 export default function Login({ onNavigate }) {
   const { login } = useAuth();
-  const [form, setForm] = useState({ email: "", password: "" });
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // Clear the error for this field when the user starts typing
+    setErrors((prev) => ({
+      ...prev,
+      [name]: undefined,
+      general: undefined,
+    }));
   }
 
   async function handleSubmit(e) {
-  e.preventDefault();
-  setSubmitting(true);
-  setErrors({});
-  try {
-    const data = await login(form);
-    if (data.requires_2fa) {
-      onNavigate?.("VerifyOtp", { email: form.email, userId: data.user_id });
-    } else {
-      onNavigate?.("Dashboard");
+    e.preventDefault();
+
+    setSubmitting(true);
+    setErrors({});
+
+    try {
+      const data = await login(form);
+
+      if (data.requires_2fa) {
+        onNavigate?.("VerifyOtp", {
+          email: form.email,
+          userId: data.user_id,
+        });
+      } else {
+        onNavigate?.("Dashboard");
+      }
+    } catch (err) {
+      // Laravel validation errors
+      if (err.status === 422 && err.data?.errors) {
+        setErrors(err.data.errors);
+      }
+
+      // Invalid email/password
+      else if (err.status === 401) {
+        setErrors({
+          general: ["Incorrect email or password."],
+        });
+      }
+
+      // Other errors
+      else {
+        setErrors({
+          general: [err.message || "Something went wrong. Please try again."],
+        });
+      }
+    } finally {
+      setSubmitting(false);
     }
-  } catch (err) {
-    if (err.status === 422 && err.data?.errors) {
-      setErrors(err.data.errors);
-    } else if (err.status === 401) {
-      setErrors({ general: ["Incorrect email or password."] });
-    } else {
-      setErrors({ general: [err.message] });
-    }
-  } finally {
-    setSubmitting(false);
   }
-}
 
   function handleGoogleSignIn() {
     window.location.href = `${import.meta.env.VITE_SANCTUM_URL}/api/auth/google`;
@@ -92,11 +125,14 @@ export default function Login({ onNavigate }) {
           alt="LUMIÈRE GRAND"
           className="absolute inset-0 w-full h-full object-cover"
         />
+
         <div className="absolute inset-0 bg-gradient-to-t from-base-950 via-base-950/60 to-black/30" />
+
         <div className="relative z-10 flex flex-col justify-end p-12">
           <h1 className="text-4xl font-serif font-bold text-white mb-2">
             LUMIÈRE GRAND
           </h1>
+
           <p className="text-slate-300 text-sm">
             Hotel Management System · Phnom Penh, Cambodia
           </p>
@@ -106,15 +142,18 @@ export default function Login({ onNavigate }) {
       {/* Right panel — form */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md">
+          {/* Header */}
           <div className="mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-white font-serif tracking-tight">
               Welcome back
             </h2>
+
             <p className="text-sm text-slate-400 mt-1">
               Sign in to manage your hotel
             </p>
           </div>
 
+          {/* Social login */}
           <div className="space-y-3">
             <button
               type="button"
@@ -124,10 +163,6 @@ export default function Login({ onNavigate }) {
               <GoogleIcon />
               Sign in with Google
             </button>
-            {/* <a href={`${import.meta.env.VITE_SANCTUM_URL}/api/auth/google`} className="w-full flex items-center justify-center gap-2.5 bg-base-850 hover:bg-base-800 border border-base-border text-slate-200 font-medium py-2.5 rounded-lg transition-colors">
-              <GoogleIcon />
-              Sign in with Google
-            </a> */}
 
             <button
               type="button"
@@ -139,24 +174,31 @@ export default function Login({ onNavigate }) {
             </button>
           </div>
 
+          {/* Divider */}
           <div className="flex items-center gap-3 my-6">
             <div className="h-px bg-base-border flex-1" />
+
             <span className="text-xs text-slate-500 uppercase tracking-wide">
               or continue with email
             </span>
+
             <div className="h-px bg-base-border flex-1" />
           </div>
 
+          {/* Login form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
             <div>
               <label className="text-sm text-slate-400 mb-1.5 block">
                 Email
               </label>
+
               <div className="relative">
                 <Mail
                   size={16}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
                 />
+
                 <input
                   type="email"
                   name="email"
@@ -165,20 +207,34 @@ export default function Login({ onNavigate }) {
                   placeholder="you@example.com"
                   required
                   autoComplete="email"
-                  className="w-full bg-base-850 border border-base-border rounded-lg pl-10 pr-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                  className={`w-full bg-base-850 border rounded-lg pl-10 pr-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 ${
+                    errors.email
+                      ? "border-rose-500"
+                      : "border-base-border"
+                  }`}
                 />
               </div>
+
+              {/* Email error */}
+              {errors.email && (
+                <p className="mt-1.5 text-sm text-rose-400">
+                  {errors.email[0]}
+                </p>
+              )}
             </div>
 
+            {/* Password */}
             <div>
               <label className="text-sm text-slate-400 mb-1.5 block">
                 Password
               </label>
+
               <div className="relative">
                 <Lock
                   size={16}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
                 />
+
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -187,34 +243,41 @@ export default function Login({ onNavigate }) {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full bg-base-850 border border-base-border rounded-lg pl-10 pr-10 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                  className={`w-full bg-base-850 border rounded-lg pl-10 pr-10 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 ${
+                    errors.password
+                      ? "border-rose-500"
+                      : "border-base-border"
+                  }`}
                 />
+
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? (
+                    <EyeOff size={16} />
+                  ) : (
+                    <Eye size={16} />
+                  )}
                 </button>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-slate-400 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="rounded border-base-border bg-base-850 accent-amber-400"
-                />
-                Remember me
-              </label>
-              <a
-                href="#"
-                className="text-amber-400 hover:text-amber-300 transition-colors"
-              >
-                Forgot password?
-              </a>
+              {/* Password error */}
+              {errors.password && (
+                <p className="mt-1.5 text-sm text-rose-400">
+                  {errors.password[0]}
+                </p>
+              )}
             </div>
+             {/* General error */}
+            {errors.general && (
+              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
+                {errors.general[0]}
+              </div>
+            )}
 
+            {/* Sign In button */}
             <button
               type="submit"
               disabled={submitting}
@@ -229,24 +292,11 @@ export default function Login({ onNavigate }) {
                 "Sign In"
               )}
             </button>
-          </form>
 
-          {/* <p className="text-sm text-slate-400 text-center mt-6">
-            Don't have an account?{" "}
-            <button
-              onClick={() => onNavigate?.("Register")}
-              className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
-            >
-              Create one
-            </button>
-          </p> */}
+           
+          </form>
         </div>
       </div>
-      {errors.general && (
-        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3 mb-5">
-          {errors.general[0]}
-        </div>
-      )}
     </div>
   );
 }
