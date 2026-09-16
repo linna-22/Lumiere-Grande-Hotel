@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
             $table->string('first_name');
             $table->string('last_name');
-            $table->
+         
             $table->string('position');
             $table->decimal('salary', 10,2);
             $table->date('hire_date');

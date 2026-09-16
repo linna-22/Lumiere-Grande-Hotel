@@ -37,7 +37,28 @@ class MonthlyRevenueController extends Controller
         // 3. Hotel Capacity
         $totalRooms = Rooms::where('status', '!=', 'maintenance')->count();
         $totalAvailableRoomNights = $totalRooms * $totalDays;
-    
+        
+        $totalRooms = Rooms::where('status', '!=', 'maintenance')->count();
+        $totalAvailableRoomNights = $totalRooms * $totalDays;
+
+        $totalRoomsCount = Rooms::count();
+        $roomStatusCounts = Rooms::select('status', DB::raw('COUNT(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $roomStatus = [
+            'occupied'     => (int) ($roomStatusCounts['occupied'] ?? 0),
+            'vacant_clean' => (int) ($roomStatusCounts['vacant_clean'] ?? 0),
+            'vacant_dirty' => (int) ($roomStatusCounts['vacant_dirty'] ?? 0),
+            'maintenance'  => (int) ($roomStatusCounts['maintenance'] ?? 0),
+            'percentages'  => [
+                'occupied'     => $totalRoomsCount > 0 ? round((($roomStatusCounts['occupied'] ?? 0) / $totalRoomsCount) * 100, 1) : 0,
+                'vacant_clean' => $totalRoomsCount > 0 ? round((($roomStatusCounts['vacant_clean'] ?? 0) / $totalRoomsCount) * 100, 1) : 0,
+                'vacant_dirty' => $totalRoomsCount > 0 ? round((($roomStatusCounts['vacant_dirty'] ?? 0) / $totalRoomsCount) * 100, 1) : 0,
+                'maintenance'  => $totalRoomsCount > 0 ? round((($roomStatusCounts['maintenance'] ?? 0) / $totalRoomsCount) * 100, 1) : 0,
+            ]
+        ];
+        
         // 4. Revenue Aggregation
         $completedPayments = Payments::where('status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate]);
