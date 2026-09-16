@@ -128,4 +128,87 @@ class PaymentController extends Controller
             'message' => 'Payment not completed yet.'
         ]);
     }
+
+    public function processCashPayment(Request $request) : JsonResponse {
+
+    $validated = $request->validate([
+        'reservation_id' => 'required|exists:reservations,id',
+        'invoice_id'     => 'required|exists:invoices,id',
+        'amount_due' => 'required|numeric|min:0.01',
+        'cash_recived' => 'required|numeric|min:0.01',
+        'currency' => 'nullable|string|in:USD,KHR',
+        'exchange' => 'nullable|numeric|min:1',
+    ]);
+
+    $currency = $validated['currency'] ?? 'USD';
+    $exchangeRate = $validated['exchange'] ?? 4200;
+    $amountDue = $validated['amount_due'];
+    $cashReceived = $validated['cash_recived'];
+
+    $recivedInUsd = ($currency === 'KHR') ? ($cashReceived / $exchangeRate) : $cashReceived;
+
+    if($recivedInUsd < $amountDue) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Received cash is less than the amount due.'
+        ], 422);
+
+
+    }
+
+    $changeUsd = $recivedInUsd - $amountDue;
+    $changeKhr = $changeUsd * $exchangeRate;
+
+    $referenceNo = 'CASH-' . $validated['invoice_id']. '-' . time();
+
+   $payment = DB::transaction(function () use ($validated, $amountDue, $referenceNo) {
+            // 1. Create Payment record
+            $payment = Payments::create([
+                'reservation_id' => $validated['reservation_id'],
+                'invoice_id'     => $validated['invoice_id'],
+                'payment_date'   => now(),
+                'amount'         => $amountDue,
+                'payment_method' => 'cash',
+                'payment_type'   => 'room_booking',
+                'reference_no'   => $referenceNo,
+                'status'         => 'completed',
+            ]);
+
+            // 2. Update Reservation totals & status
+            $reservation = $payment->reservation;
+            if ($reservation) {
+                $newPaidAmount = $reservation->paid_amount + $amountDue;
+                $paymentStatus = ($newPaidAmount >= $reservation->total_amount) ? 'paid' : 'partially_paid';
+
+                $reservation->update([
+                    'paid_amount'    => $newPaidAmount,
+                    'payment_status' => $paymentStatus,
+                    'status'         => 'confirmed',
+                ]);
+
+                if ($payment->invoice) {
+                    $payment->invoice->update(['status' => $paymentStatus]);
+                }
+            }
+
+            return $payment;
+        });
+
+        return response()->json([
+            'status'     => 'success',
+            'message'    => 'Cash payment processed successfully.',
+            'payment_id' => $payment->id,
+            'summary'    => [
+                'amount_due_usd' => number_format($amountDue, 2),
+                'cash_received'  => number_format($cashReceived, 2) . ' ' . $currency,
+                'exchange_rate'  => '1 USD = ' . number_format($exchangeRate) . ' KHR',
+                'change_due'     => [
+                    'usd' => number_format($changeUsd, 2),
+                    'khr' => number_format(round($changeKhr, -2)), // Rounded to hundreds for KHR notes
+                ]
+            ]
+        ], 201);
+
+    }
+
 }

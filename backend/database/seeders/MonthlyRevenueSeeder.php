@@ -22,7 +22,7 @@ class MonthlyRevenueSeeder extends Seeder
     /**
      * Run the database seeds.
      */
-   public function run(): void
+    public function run(): void
     {
         // 1. Ensure Room Types exist first
         $deluxe = Room_types::firstOrCreate(
@@ -58,6 +58,10 @@ class MonthlyRevenueSeeder extends Seeder
             );
         }
 
+        Rooms::whereNull('room_type_id')->update([
+            'room_type_id' => $roomTypeIds[array_rand($roomTypeIds)],
+        ]);
+
         $rooms = Rooms::with('roomType')->get();
         $startOfMonth = Carbon::now()->startOfMonth();
         $daysInMonth  = Carbon::now()->daysInMonth;
@@ -65,7 +69,7 @@ class MonthlyRevenueSeeder extends Seeder
         // 3. Ensure Guest exists
         $guest = Guests::firstOrCreate(
             ['email' => 'testguest@hotel.com'],
-            [   
+            [
                 'first_name'  => 'Sample',
                 'last_name'   => 'Guest',
                 'phone'       => '+85586247757',
@@ -98,6 +102,7 @@ class MonthlyRevenueSeeder extends Seeder
             Reservation_rooms::create([
                 'reservation_id'   => $reservation->id,
                 'room_id'          => $room->id,
+                'room_type_id'     => $room->room_type_id,
                 'actual_check_in'  => $checkIn->toDateString(),
                 'actual_check_out' => $checkOut->toDateString(),
                 'nightly_rate'     => $amount,
@@ -107,6 +112,7 @@ class MonthlyRevenueSeeder extends Seeder
             Payments::create([
                 'reservation_id' => $reservation->id,
                 'invoice_id'     => $i,
+                'payment_date'   => $checkIn,
                 'amount'         => $amount,
                 'payment_method' => (rand(1, 10) <= 7) ? 'bakong_khqr' : 'cash',
                 'payment_type'   => 'room_booking',
@@ -120,9 +126,9 @@ class MonthlyRevenueSeeder extends Seeder
 
         // 5. Seed Staff & Employee Profiles
         $staffData = [
-            ['name' => 'John Receptionist', 'email' => 'john.staff@hotel.com', 'role' => 'manager',      'position' => 'manager',      'salary' => 600.00],
-            ['name' => 'Sophea Cleaner',    'email' => 'sophea.staff@hotel.com',  'role' => 'receptionist', 'position' => 'receptionist', 'salary' => 450.00],
-            ['name' => 'Dara Technician',   'email' => 'dara.staff@hotel.com',   'role' => 'cashier',      'position' => 'cashier',      'salary' => 550.00],
+            ['name' => 'John Receptionist', 'first_name' => 'John',   'last_name' => 'Receptionist', 'email' => 'john.staff@hotel.com', 'role' => 'manager',      'position' => 'manager',      'salary' => 600.00],
+            ['name' => 'Sophea Cleaner',    'first_name' => 'Sophea', 'last_name' => 'Cleaner',      'email' => 'sophea.staff@hotel.com',  'role' => 'receptionist', 'position' => 'receptionist', 'salary' => 450.00],
+            ['name' => 'Dara Technician',   'first_name' => 'Dara',   'last_name' => 'Technician',   'email' => 'dara.staff@hotel.com',   'role' => 'cashier',      'position' => 'cashier',      'salary' => 550.00],
         ];
 
         foreach ($staffData as $data) {
@@ -138,6 +144,8 @@ class MonthlyRevenueSeeder extends Seeder
             Employee::firstOrCreate(
                 ['user_id' => $user->id],
                 [
+                    'first_name' => $data['first_name'],
+                    'last_name'  => $data['last_name'],
                     'position'  => $data['position'],
                     'salary'    => $data['salary'],
                     'hire_date' => $startOfMonth->copy()->subMonths(6)->toDateString(),
