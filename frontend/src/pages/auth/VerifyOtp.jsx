@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
-import { useAuth } from "../../hooks/useAuth";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 60;
 
-export default function VerifyOtp({ email = "", userId, onNavigate }) {
-  const { verifyOtp } = useAuth();
+export default function VerifyOtp({ email = "", userId, onNavigate, auth }) {
+  const { verifyOtp } = auth;
   const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(""));
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [error, setError] = useState("");

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useAuth } from "../../hooks/useAuth";
 
 function GoogleIcon(props) {
   return (
@@ -39,9 +38,9 @@ function GitHubIcon(props) {
   );
 }
 
-export default function Login({ onNavigate }) {
-  const { login } = useAuth();
+export default function Login({ onNavigate, auth }) {
 
+  const { login } = auth;
   const [form, setForm] = useState({
     email: "",
     password: "",

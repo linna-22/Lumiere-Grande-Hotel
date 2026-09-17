@@ -93,7 +93,14 @@ function resolveOAuthCallback() {
 }
 
 export default function App() {
-  const { user, loading } = useAuth()
+  /**
+   * useAuth() is called ONLY here, once. Every page gets
+   * this same `auth` object via props instead of calling
+   * useAuth() itself — that keeps a single shared user state
+   * across the whole app.
+   */
+  const auth = useAuth()
+  const { user, loading } = auth
 
   const [page, setPage] = useState('Login')
   const [navigationData, setNavigationData] = useState({})
@@ -186,13 +193,14 @@ export default function App() {
    * an authenticated user.
    */
   if (!user && page !== 'Login' && page !== 'Register' && page !== 'VerifyOtp') {
-    return <Login onNavigate={handleNavigate} />
+    return <Login auth={auth} onNavigate={handleNavigate} />
   }
 
   const Page = pages[page] || Login
 
   return (
     <Page
+      auth={auth}
       onNavigate={handleNavigate}
       {...navigationData}
     />
