@@ -149,3 +149,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/invoices', [InvoiceController::class, 'index']);
     Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
 });
+
+Route::middleware(['auth:sanctum'])->group(function () {
+
+Route::post('/paymentCash', [PaymentController::class, 'processCashPayment']);
+
+});

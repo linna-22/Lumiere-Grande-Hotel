@@ -82,11 +82,9 @@ class MonthlyRevenueSeeder extends Seeder
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 3. Load Rooms With Their Room Types
-        |--------------------------------------------------------------------------
-        */
+        Rooms::whereNull('room_type_id')->update([
+            'room_type_id' => $roomTypeIds[array_rand($roomTypeIds)],
+        ]);
 
         $rooms = Rooms::with('roomType')->get();
 
@@ -113,13 +111,11 @@ class MonthlyRevenueSeeder extends Seeder
         */
 
         $guest = Guests::firstOrCreate(
+            ['email' => 'testguest@hotel.com'],
             [
-                'email' => 'testguest@hotel.com',
-            ],
-            [
-                'first_name' => 'Sample',
-                'last_name' => 'Guest',
-                'phone' => '+85586247757',
+                'first_name'  => 'Sample',
+                'last_name'   => 'Guest',
+                'phone'       => '+85586247757',
                 'nationality' => 'Cambodia',
             ]
         );
@@ -229,19 +225,12 @@ class MonthlyRevenueSeeder extends Seeder
             */
 
             Reservation_rooms::create([
-                'reservation_id' => $reservation->id,
-
-                'room_id' => $room->id,
-
-                'room_type_id' => $room->room_type_id,
-
-                'actual_check_in' => $checkIn,
-
-                'actual_check_out' => $checkOut,
-
-                'nightly_rate' => $nightlyRate,
-
-                'status' => 'checked_out',
+                'reservation_id'   => $reservation->id,
+                'room_id'          => $room->id,
+                'room_type_id'     => $room->room_type_id,
+                'actual_check_in'  => $checkIn->toDateString(),
+                'actual_check_out' => $checkOut->toDateString(),
+                'nightly_rate'     => $amount,
             ]);
 
             /*
@@ -256,35 +245,16 @@ class MonthlyRevenueSeeder extends Seeder
 
             Payments::create([
                 'reservation_id' => $reservation->id,
-
-                'invoice_id' => null,
-
-                'amount' => $amount,
-
-                'payment_method' => rand(1, 10) <= 7
-                    ? 'bakong_khqr'
-                    : 'cash',
-
-                'payment_type' => 'room_booking',
-
-                'reference_no' =>
-                    'SEED-' .
-                    now()->format('YmdHis') .
-                    '-' .
-                    $i .
-                    '-' .
-                    Str::upper(Str::random(4)),
-
-                'bakong_hash' => Str::random(32),
-
-                'status' => 'completed',
-
-                // Required by payments table
-                'payment_date' => $checkIn->toDateString(),
-
-                'created_at' => $checkIn,
-
-                'updated_at' => $checkIn,
+                'invoice_id'     => $i,
+                'payment_date'   => $checkIn,
+                'amount'         => $amount,
+                'payment_method' => (rand(1, 10) <= 7) ? 'bakong_khqr' : 'cash',
+                'payment_type'   => 'room_booking',
+                'reference_no'   => 'INV-' . (1000 + $i),
+                'bakong_hash'    => Str::random(32),
+                'status'         => 'completed',
+                'created_at'     => $checkIn,
+                'updated_at'     => $checkIn,
             ]);
         }
 
@@ -295,29 +265,9 @@ class MonthlyRevenueSeeder extends Seeder
         */
 
         $staffData = [
-            [
-                'name' => 'John Receptionist',
-                'email' => 'john.staff@hotel.com',
-                'role' => 'manager',
-                'position' => 'manager',
-                'salary' => 600.00,
-            ],
-
-            [
-                'name' => 'Sophea Cleaner',
-                'email' => 'sophea.staff@hotel.com',
-                'role' => 'receptionist',
-                'position' => 'receptionist',
-                'salary' => 450.00,
-            ],
-
-            [
-                'name' => 'Dara Technician',
-                'email' => 'dara.staff@hotel.com',
-                'role' => 'cashier',
-                'position' => 'cashier',
-                'salary' => 550.00,
-            ],
+            ['name' => 'John Receptionist', 'first_name' => 'John',   'last_name' => 'Receptionist', 'email' => 'john.staff@hotel.com', 'role' => 'manager',      'position' => 'manager',      'salary' => 600.00],
+            ['name' => 'Sophea Cleaner',    'first_name' => 'Sophea', 'last_name' => 'Cleaner',      'email' => 'sophea.staff@hotel.com',  'role' => 'receptionist', 'position' => 'receptionist', 'salary' => 450.00],
+            ['name' => 'Dara Technician',   'first_name' => 'Dara',   'last_name' => 'Technician',   'email' => 'dara.staff@hotel.com',   'role' => 'cashier',      'position' => 'cashier',      'salary' => 550.00],
         ];
 
         foreach ($staffData as $data) {
@@ -337,18 +287,12 @@ class MonthlyRevenueSeeder extends Seeder
 
             Employee::firstOrCreate(
                 [
-                    'user_id' => $user->id,
-                ],
-                [
-                    'first_name' => $nameParts[0],
-                    'last_name' => $nameParts[1] ?? '',
-                    'position' => $data['position'],
-                    'salary' => $data['salary'],
-                    'hire_date' => $startOfMonth
-                        ->copy()
-                        ->subMonths(6)
-                        ->toDateString(),
-                    'status' => 'active',
+                    'first_name' => $data['first_name'],
+                    'last_name'  => $data['last_name'],
+                    'position'  => $data['position'],
+                    'salary'    => $data['salary'],
+                    'hire_date' => $startOfMonth->copy()->subMonths(6)->toDateString(),
+                    'status'    => 'active',
                 ]
             );
         }
