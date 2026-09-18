@@ -18,24 +18,28 @@ class PaymentController extends Controller
         $this->khqrService = $khqrService;
     }
 
-    public function generatePayment(Request $request): JsonResponse
+public function generatePayment(Request $request): JsonResponse
 {
     $validated = $request->validate([
-        'reservation_id' => 'required|exists:reservations,id',
-        'invoice_id'     => 'required|exists:invoices,id',
-        'amount'         => 'required|numeric|min:0.01',
-        'currency'       => 'nullable|string|in:USD,KHR',
+        'reservation_id'     => 'required|exists:reservations,id',
+        'invoice_id'         => 'required|exists:invoices,id',
+        'amount'             => 'required|numeric|min:0.01',
+        'currency'           => 'nullable|string|in:USD,KHR',
+        'expiration_minutes' => 'nullable|integer|min:1|max:60', // 1. Added validation
     ]);
 
     $referenceNo = 'INV-' . $validated['invoice_id'];
     $currency    = $validated['currency'] ?? 'USD';
-    
+    $expirationMinutes = $validated['expiration_minutes'] ?? 10; // Default to 10 minutes
+
     $formattedAmount = number_format((float) $validated['amount'], 2, '.', '');
 
+    // 2. Pass expiration_minutes to service
     $qrResult = $this->khqrService->generateQr(
         billNumber: $referenceNo,
         amount: $formattedAmount,
-        currency: $currency
+        currency: $currency,
+        expirationMinutes: $expirationMinutes
     );
 
     if (!$qrResult['success']) {
@@ -45,6 +49,7 @@ class PaymentController extends Controller
         ], 400);
     }
 
+    // 3. Save expires_at to database
     $payment = Payments::create([
         'reservation_id' => $validated['reservation_id'],
         'invoice_id'     => $validated['invoice_id'],
@@ -55,6 +60,7 @@ class PaymentController extends Controller
         'reference_no'   => $referenceNo,
         'bakong_hash'    => $qrResult['md5'],
         'status'         => 'pending',
+        'expires_at'     => $qrResult['expires_at'] ?? now()->addMinutes($expirationMinutes), // Stored in DB
     ]);
 
     return response()->json([
@@ -63,6 +69,7 @@ class PaymentController extends Controller
         'qr_code'    => $qrResult['qr_code'],
         'md5'        => $qrResult['md5'],
         'deeplink'   => $qrResult['deeplink'],
+        'expires_at' => $payment->expires_at, // Returned to frontend timer
     ], 201);
 }
     /**
@@ -73,22 +80,35 @@ class PaymentController extends Controller
         
         $payment = Payments::with(['reservation', 'invoice'])->findOrFail($paymentId);
 
-     
-        if (in_array($payment->status, ['paid', 'completed'])) {
-            return response()->json([
-                'status'  => 'success',
-                'paid'    => true,
-                'message' => 'Payment already completed.'
-            ]);
+    // 1. Check if already paid
+    if (in_array($payment->status, ['paid', 'completed'])) {
+        return response()->json([
+            'status'  => 'success',
+            'paid'    => true,
+            'message' => 'Payment already completed.'
+        ]);
+    }
+
+    // NEW: Check if payment has expired
+    if ($payment->expires_at && now()->greaterThan($payment->expires_at)) {
+        if ($payment->status !== 'expired') {
+            $payment->update(['status' => 'expired']);
         }
 
-        // 3. Ensure Bakong MD5 hash exists
-        if (!$payment->bakong_hash) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'No Bakong transaction hash associated with this payment.'
-            ], 400);
-        }
+        return response()->json([
+            'status'  => 'expired',
+            'paid'    => false,
+            'message' => 'QR code has expired. Please generate a new payment QR.'
+        ], 410); // 410 Gone / Expired
+    }
+
+    // 2. Ensure Bakong MD5 hash exists
+    if (!$payment->bakong_hash) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'No Bakong transaction hash associated with this payment.'
+        ], 400);
+    }
 
         // 4. Query NBC Bakong API
         $verification = $this->khqrService->verifyTransaction($payment->bakong_hash);

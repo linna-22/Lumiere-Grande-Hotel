@@ -26,17 +26,22 @@ class KhqrService
     /**
      * Generate a dynamic KHQR with a fixed amount.
      */
-    public function generateQr(string $billNumber, float $amount, string $currency = 'USD'): array
+    
+        /**
+ * Generate a dynamic KHQR with an optional expiration time (in minutes).
+ */
+public function generateQr(string $billNumber, float $amount, string $currency = 'USD', int $expirationMinutes = 10): array
     {
         try {
             $currencyType = strtoupper($currency) === 'KHR'
                 ? KHQRData::CURRENCY_KHR
                 : KHQRData::CURRENCY_USD;
 
-            // Format amount float precision
             $formattedAmount = round($amount, 2);
 
-            // Check if account is a Merchant Account (@bkmc, @abam, @merchant)
+            // Convert current time + expiration offset to milliseconds timestamp
+            $expirationTimestamp = (string) (int) (microtime(true) * 1000 + ($expirationMinutes * 60 * 1000));
+
             $isMerchant = str_contains($this->accountId, '@bkmc') || str_contains($this->accountId, '@abam');
 
             if ($isMerchant) {
@@ -49,10 +54,10 @@ class KhqrService
                     currency: $currencyType,
                     amount: $formattedAmount,
                     billNumber: $billNumber,
-                    mobileNumber: ''
+                    mobileNumber: '',
+                    expirationTimestamp: $expirationTimestamp
                 );
             } else {
-                // Fully named arguments for IndividualInfo
                 $individualInfo = new IndividualInfo(
                     bakongAccountID: $this->accountId,
                     merchantName: $this->merchantName,
@@ -60,11 +65,18 @@ class KhqrService
                     currency: $currencyType,
                     amount: $formattedAmount,
                     billNumber: $billNumber,
-                    storeLabel: null
+                    storeLabel: null,
+                    expirationTimestamp: $expirationTimestamp
                 );
             }
 
-            // Extract payload from SDK response
+            // Fix 1: Instantiate BakongKHQR class instead of static call
+            $bakongKhqr = new BakongKHQR($this->apiToken);
+
+            $response = $isMerchant
+                ? $bakongKhqr->generateMerchant($merchantInfo)
+                : $bakongKhqr->generateIndividual($individualInfo);
+
             $qrData = $response->data['qr'] ?? null;
             $md5    = $response->data['md5'] ?? null;
 
@@ -76,16 +88,17 @@ class KhqrService
             }
 
             return [
-                'success'  => true,
-                'qr_code'  => $qrData,
-                'md5'      => $md5,
-                'deeplink' => "https://bakong.page.link/pay?qr=" . urlencode($qrData),
+                'success'    => true,
+                'qr_code'    => $qrData,
+                'md5'        => $md5,
+                'deeplink'   => "https://bakong.page.link/pay?qr=" . urlencode($qrData),
+                'expires_at' => now()->addMinutes($expirationMinutes)->toIso8601String(),
             ];
 
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ];
         }
     }
@@ -98,35 +111,34 @@ class KhqrService
         if (!$this->apiToken) {
             return [
                 'success' => false,
-                'paid' => false,
-                'status' => 'PENDING',
+                'paid'    => false,
+                'status'  => 'PENDING',
                 'message' => 'Bakong API Token is missing in configuration.',
             ];
         }
 
         try {
-            $bakongKhqr = new BakongKHQR(
-                $this->apiToken
-            );
+            $bakongKhqr = new BakongKHQR($this->apiToken);
+
+            // Fix 2: Call checkTransactionByMD5 method to fetch response
+            $response = $bakongKhqr->checkTransactionByMD5($md5Hash);
 
             $status = $response->data['status'] ?? 'PENDING';
-            $isPaid = in_array($status, ['SUCCESS', '0', 0], true);
+            $isPaid = in_array($status, ['SUCCESS', '0', 0], true) || ($response->data['errorCode'] ?? null) === 0;
 
             return [
                 'success' => true,
-                'paid' => $isPaid,
-                'status' => $isPaid
-                    ? 'SUCCESS'
-                    : 'PENDING',
-                'raw' => $response->data ?? [],
+                'paid'    => $isPaid,
+                'status'  => $isPaid ? 'SUCCESS' : 'PENDING',
+                'raw'     => $response->data ?? [],
             ];
 
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'paid' => false,
-                'status' => 'PENDING',
-                'error' => $e->getMessage(),
+                'paid'    => false,
+                'status'  => 'PENDING',
+                'error'   => $e->getMessage(),
             ];
         }
     }
