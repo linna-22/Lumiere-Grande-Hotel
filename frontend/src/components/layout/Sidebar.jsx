@@ -24,9 +24,9 @@ const navGroups = [
     label: 'Main',
     items: [
       { label: 'Dashboard', icon: LayoutGrid },
-      { label: 'Reservations', icon: CalendarDays },
       { label: 'RoomTypes', icon: Bed },
       { label: 'Rooms', icon: BedDouble },
+      { label: 'Reservations', icon: CalendarDays },
     ],
   },
   {
