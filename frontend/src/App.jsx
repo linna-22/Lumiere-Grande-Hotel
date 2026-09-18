@@ -27,6 +27,7 @@ import EditProfile from './pages/EditProfile'
 import ChangePassword from './pages/ChangePassword'
 
 import AddReservation from './pages/reservations/AddReservation'
+import BookingSuccess from './pages/booking/BookingSuccess'
 
 import { setToken } from './api/client'
 import { useAuth } from './hooks/useAuth'
@@ -61,6 +62,8 @@ const pages = {
   'Users Add': AddUser,
   'Users View': ViewUser,
   'Users Edit': EditUser,
+
+  'Booking Success': BookingSuccess,
 }
 
 /**
