@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { CreditCard, WalletCards, Banknote, AlertCircle } from "lucide-react";
+import { WalletCards, Banknote, AlertCircle } from "lucide-react";
 
 export default function PaymentStep({
   form,
@@ -13,6 +13,7 @@ export default function PaymentStep({
   const [loading, setLoading] = useState(false);
   const [payment, setPayment] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [cashDetailsOpen, setCashDetailsOpen] = useState(false);
 
   //Payment step
   const API_BASE_URL = (import.meta.env.VITE_API_URL || "/api").replace(
@@ -143,6 +144,15 @@ export default function PaymentStep({
     if (!form.payment_method) {
       setError("Please select a payment method.");
       return;
+    }
+    if (form.payment_method === "cash") {
+      const cashReceived = Number(form.cash_received || 0);
+
+      if (cashReceived < amountToPay) {
+        setError(`Cash received must be at least $${amountToPay.toFixed(2)}.`);
+        setCashDetailsOpen(true);
+        return;
+      }
     }
 
     setError("");
@@ -412,7 +422,7 @@ export default function PaymentStep({
           Payment Method
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Bakong */}
           <button
             type="button"
@@ -435,51 +445,126 @@ export default function PaymentStep({
             <span className="text-sm font-medium text-white">Bakong KHQR</span>
           </button>
 
-          {/* Credit Card */}
+          {/* Cash */}
           <button
             type="button"
-            onClick={() => handlePaymentMethodChange("credit_card")}
+            onClick={() => {
+              handlePaymentMethodChange("cash");
+              setCashDetailsOpen(true);
+            }}
             className={`flex items-center gap-3 rounded-xl border p-4 transition-all ${
-              form.payment_method === "credit_card"
+              form.payment_method === "cash"
                 ? "border-amber-400/70 bg-amber-400/5"
                 : "border-base-border bg-base-800 hover:border-slate-600"
             }`}
           >
-            <CreditCard
+            <Banknote
               size={20}
               className={
-                form.payment_method === "credit_card"
+                form.payment_method === "cash"
                   ? "text-amber-400"
                   : "text-slate-500"
               }
             />
 
-            <span className="text-sm font-medium text-white">Credit Card</span>
-          </button>
-
-          {/* Stripe */}
-          <button
-            type="button"
-            onClick={() => handlePaymentMethodChange("stripe")}
-            className={`flex items-center gap-3 rounded-xl border p-4 transition-all ${
-              form.payment_method === "stripe"
-                ? "border-amber-400/70 bg-amber-400/5"
-                : "border-base-border bg-base-800 hover:border-slate-600"
-            }`}
-          >
-            <CreditCard
-              size={20}
-              className={
-                form.payment_method === "stripe"
-                  ? "text-amber-400"
-                  : "text-slate-500"
-              }
-            />
-
-            <span className="text-sm font-medium text-white">Stripe</span>
+            <span className="text-sm font-medium text-white">Cash</span>
           </button>
         </div>
       </div>
+      {/* Cash Payment Details */}
+      {form.payment_method === "cash" && (
+        <div className="mt-4 rounded-xl border border-amber-400/30 bg-base-800 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setCashDetailsOpen((prev) => !prev)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Cash Payment Details
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Enter the amount received from the customer
+              </p>
+            </div>
+
+            <span className="text-slate-400">
+              {cashDetailsOpen ? "▲" : "▼"}
+            </span>
+          </button>
+
+          {cashDetailsOpen && (
+            <div className="border-t border-base-border p-4 space-y-4">
+              {/* Amount to Pay */}
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-2">
+                  Amount to Pay
+                </label>
+
+                <div className="w-full rounded-lg border border-base-border bg-base-900 px-4 py-3 text-sm text-amber-400 font-semibold">
+                  ${amountToPay.toFixed(2)}
+                </div>
+              </div>
+
+              {/* Amount Received */}
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-2">
+                  Amount Received
+                </label>
+
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    $
+                  </span>
+
+                  <input
+                    type="number"
+                    min={amountToPay}
+                    step="0.01"
+                    value={form.cash_received ?? ""}
+                    onChange={(e) => {
+                      const received = Number(e.target.value);
+
+                      onChange({
+                        cash_received: e.target.value,
+                        cash_change:
+                          received >= amountToPay
+                            ? Number((received - amountToPay).toFixed(2))
+                            : 0,
+                      });
+
+                      setError("");
+                    }}
+                    placeholder="Enter cash received"
+                    className="w-full rounded-lg border border-base-border bg-base-900 pl-8 pr-4 py-3 text-sm text-white outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              {/* Change */}
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-2">
+                  Change
+                </label>
+
+                <div className="w-full rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+                  <span className="text-lg font-bold text-emerald-400">
+                    ${Number(form.cash_change || 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Warning */}
+              {form.cash_received &&
+                Number(form.cash_received) < amountToPay && (
+                  <p className="text-xs text-rose-400">
+                    Amount received must be at least ${amountToPay.toFixed(2)}.
+                  </p>
+                )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Payment Summary */}
       <div className="bg-base-800 border border-amber-400/30 rounded-xl p-5">
@@ -500,11 +585,7 @@ export default function PaymentStep({
             </p>
 
             <p className="text-xs text-slate-500 mt-1">
-              {form.payment_method === "bakong_khqr"
-                ? "Bakong KHQR"
-                : form.payment_method === "credit_card"
-                  ? "Credit Card"
-                  : "Stripe"}
+              {form.payment_method === "bakong_khqr" ? "Bakong KHQR" : "Cash"}
             </p>
           </div>
         </div>
