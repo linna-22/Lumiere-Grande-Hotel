@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowDownRight,
@@ -12,72 +12,59 @@ import {
   RefreshCw,
   TrendingDown,
   TrendingUp,
-} from 'lucide-react'
+} from "lucide-react";
 
-import Sidebar from '../../components/layout/Sidebar'
-import TopBar from '../../components/layout/TopBar'
-import { apiFetch } from '../../api/client'
+import Sidebar from "../../components/layout/Sidebar";
+import TopBar from "../../components/layout/TopBar";
+import { apiFetch } from "../../api/client";
 
 // =====================================================
 // Helpers
 // =====================================================
 
 function formatMoney(value) {
-  const number = Number(value || 0)
+  const number = Number(value || 0);
 
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(number)
+  }).format(number);
 }
 
 function formatNumber(value) {
-  return new Intl.NumberFormat('en-US').format(
-    Number(value || 0),
-  )
+  return new Intl.NumberFormat("en-US").format(Number(value || 0));
 }
 
 function formatDate(date) {
-  if (!date) return ''
+  if (!date) return "";
 
-  return new Date(`${date}T00:00:00`).toLocaleDateString(
-    'en-US',
-    {
-      month: 'short',
-      day: 'numeric',
-    },
-  )
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function getCurrentMonthDates() {
-  const now = new Date()
+  const now = new Date();
 
-  const year = now.getFullYear()
+  const year = now.getFullYear();
 
-  const month = String(
-    now.getMonth() + 1,
-  ).padStart(2, '0')
+  const month = String(now.getMonth() + 1).padStart(2, "0");
 
-  const lastDay = new Date(
-    year,
-    now.getMonth() + 1,
-    0,
-  ).getDate()
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
 
   return {
     start: `${year}-${month}-01`,
-    end: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
-  }
+    end: `${year}-${month}-${String(lastDay).padStart(2, "0")}`,
+  };
 }
 
 function formatLabel(value) {
-  if (!value) return 'Unknown'
+  if (!value) return "Unknown";
 
   return String(value)
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, (letter) =>
-      letter.toUpperCase(),
-    )
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 // =====================================================
@@ -89,17 +76,15 @@ function StatCard({
   value,
   subtitle,
   icon: Icon,
-  iconColor = 'text-[#FFB21B]',
-  iconBackground = 'bg-[#FFB21B]/10',
-  valuePrefix = '',
+  iconColor = "text-[#FFB21B]",
+  iconBackground = "bg-[#FFB21B]/10",
+  valuePrefix = "",
 }) {
   return (
     <div className="bg-[#0D192D] border border-[#1C2B43] rounded-xl p-5 hover:border-[#2A3B57] transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm text-[#8EA0BA]">
-            {title}
-          </p>
+          <p className="text-sm text-[#8EA0BA]">{title}</p>
 
           <div className="mt-3 flex items-baseline gap-1">
             {valuePrefix && (
@@ -114,9 +99,7 @@ function StatCard({
           </div>
 
           {subtitle && (
-            <p className="mt-2 text-xs text-[#64748B]">
-              {subtitle}
-            </p>
+            <p className="mt-2 text-xs text-[#64748B]">{subtitle}</p>
           )}
         </div>
 
@@ -127,30 +110,21 @@ function StatCard({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // =====================================================
 // Section Header
 // =====================================================
 
-function SectionHeader({
-  title,
-  subtitle,
-}) {
+function SectionHeader({ title, subtitle }) {
   return (
     <div className="mb-5">
-      <h2 className="text-base font-semibold text-white">
-        {title}
-      </h2>
+      <h2 className="text-base font-semibold text-white">{title}</h2>
 
-      {subtitle && (
-        <p className="text-xs text-[#64748B] mt-1">
-          {subtitle}
-        </p>
-      )}
+      {subtitle && <p className="text-xs text-[#64748B] mt-1">{subtitle}</p>}
     </div>
-  )
+  );
 }
 
 // =====================================================
@@ -159,122 +133,299 @@ function SectionHeader({
 
 function RevenueChart({ data }) {
   const maxValue = useMemo(() => {
-    if (!data?.length) return 1
+    if (!data?.length) return 1;
 
-    return Math.max(
-      ...data.map((item) =>
-        Number(item.revenue || 0),
-      ),
-      1,
-    )
-  }, [data])
+    return Math.max(...data.map((item) => Number(item.revenue || 0)), 1);
+  }, [data]);
+
+  const minValue = useMemo(() => {
+    if (!data?.length) return 0;
+
+    return Math.min(...data.map((item) => Number(item.revenue || 0)), 0);
+  }, [data]);
+
+  const [hoverIndex, setHoverIndex] = useState(null);
+
+  const width = 1000;
+  const height = 260;
+  const padding = 12;
+
+  const points = useMemo(() => {
+    if (!data?.length) return [];
+
+    const range = maxValue - minValue || 1;
+
+    const step =
+      data.length > 1 ? (width - padding * 2) / (data.length - 1) : 0;
+
+    return data.map((item, index) => {
+      const revenue = Number(item.revenue || 0);
+
+      const x = padding + step * index;
+
+      const y =
+        height -
+        padding -
+        ((revenue - minValue) / range) * (height - padding * 2);
+
+      return {
+        x,
+        y,
+        revenue,
+        date: item.date,
+      };
+    });
+  }, [data, maxValue, minValue]);
+
+  // Smooth catmull-rom -> cubic bezier path
+  const linePath = useMemo(() => {
+    if (points.length === 0) return "";
+
+    if (points.length === 1) {
+      return `M ${points[0].x},${points[0].y}`;
+    }
+
+    let d = `M ${points[0].x},${points[0].y}`;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i === 0 ? i : i - 1];
+
+      const p1 = points[i];
+      const p2 = points[i + 1];
+
+      const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+      d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+    }
+
+    return d;
+  }, [points]);
+
+  const areaPath = useMemo(() => {
+    if (points.length === 0) return "";
+
+    return `${linePath} L ${points[points.length - 1].x},${height - padding} L ${points[0].x},${height - padding} Z`;
+  }, [linePath, points]);
 
   if (!data?.length) {
     return (
       <div className="h-72 flex flex-col items-center justify-center">
-        <Activity
-          size={28}
-          className="text-[#334155]"
-        />
+        <Activity size={28} className="text-[#334155]" />
 
-        <p className="mt-3 text-sm text-[#64748B]">
-          No revenue data available
-        </p>
+        <p className="mt-3 text-sm text-[#64748B]">No revenue data available</p>
       </div>
-    )
+    );
   }
 
   return (
     <div>
+      {/* Animation styles */}
+      <style>
+        {`
+          @keyframes revenueLineDraw {
+            from {
+              stroke-dashoffset: 3000;
+            }
+
+            to {
+              stroke-dashoffset: 0;
+            }
+          }
+
+          @keyframes revenueAreaFade {
+            from {
+              opacity: 0;
+              transform: translateY(12px);
+            }
+
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes revenueDotAppear {
+            from {
+              opacity: 0;
+              transform: scale(0);
+            }
+
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+
+          .revenue-line-animated {
+            stroke-dasharray: 3000;
+            stroke-dashoffset: 3000;
+            animation: revenueLineDraw 3.5s ease-out forwards;
+          }
+
+          .revenue-area-animated {
+            transform-origin: center bottom;
+            animation: revenueAreaFade 2.5s ease-out forwards;
+          }
+
+          .revenue-dot-animated {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: revenueDotAppear 0.7s ease-out forwards;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .revenue-line-animated {
+              stroke-dashoffset: 0;
+              animation: none;
+            }
+
+            .revenue-area-animated {
+              animation: none;
+              opacity: 1;
+              transform: none;
+            }
+
+            .revenue-dot-animated {
+              animation: none;
+              opacity: 1;
+              transform: none;
+            }
+          }
+        `}
+      </style>
+
       {/* Legend */}
       <div className="flex items-center gap-5 mb-5">
         <div className="flex items-center gap-2 text-xs text-[#8EA0BA]">
           <span className="w-2.5 h-2.5 rounded-full bg-[#FFB21B]" />
-
           Revenue
         </div>
       </div>
 
       {/* Chart */}
-      <div className="h-64 flex items-end gap-1 sm:gap-2 overflow-hidden">
-        {data.map((item, index) => {
-          const revenue = Number(
-            item.revenue || 0,
-          )
+      <div className="h-64 relative">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          className="w-full h-full overflow-visible"
+        >
+          <defs>
+            <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#FFB21B" stopOpacity="0.35" />
 
-          const revenueHeight =
-            (revenue / maxValue) * 100
+              <stop offset="100%" stopColor="#FFB21B" stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-          return (
-            <div
-              key={item.date || index}
-              className="flex-1 min-w-[7px] h-full flex items-end justify-center group relative"
-            >
-              {/* Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 pointer-events-none">
-                <div className="bg-[#071020] border border-[#2A3B57] rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
-                  <p className="text-[10px] font-semibold text-white mb-1.5">
-                    {formatDate(item.date)}
-                  </p>
+          {/* Animated area fill */}
+          <path
+            d={areaPath}
+            fill="url(#revenueFill)"
+            stroke="none"
+            className="revenue-area-animated"
+          />
 
-                  <p className="text-[10px] text-[#FFB21B]">
-                    Revenue: $
-                    {formatMoney(revenue)}
-                  </p>
-                </div>
-              </div>
+          {/* Animated line */}
+          <path
+            d={linePath}
+            fill="none"
+            stroke="#FFB21B"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+            className="revenue-line-animated"
+          />
 
-              {/* Revenue */}
-              <div
-                className="w-full max-w-6 rounded-t-sm bg-[#FFB21B] transition-all duration-300 group-hover:bg-[#FFC54D]"
-                style={{
-                  height: `${Math.max(
-                    revenueHeight,
-                    revenue > 0 ? 1 : 0,
-                  )}%`,
-                }}
+          {/* Hover targets + dots */}
+          {points.map((p, index) => (
+            <g key={p.date || index}>
+              <rect
+                x={p.x - width / points.length / 2}
+                y={0}
+                width={width / points.length}
+                height={height}
+                fill="transparent"
+                onMouseEnter={() => setHoverIndex(index)}
+                onMouseLeave={() => setHoverIndex(null)}
               />
+
+              {hoverIndex === index && (
+                <>
+                  <line
+                    x1={p.x}
+                    y1={0}
+                    x2={p.x}
+                    y2={height}
+                    stroke="#2A3B57"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                  />
+
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r="5"
+                    fill="#FFB21B"
+                    stroke="#091326"
+                    strokeWidth="2"
+                  />
+                </>
+              )}
+            </g>
+          ))}
+        </svg>
+
+        {/* Tooltip */}
+        {hoverIndex !== null && points[hoverIndex] && (
+          <div
+            className="absolute pointer-events-none z-30 -translate-x-1/2"
+            style={{
+              left: `${(points[hoverIndex].x / width) * 100}%`,
+              top: `${(points[hoverIndex].y / height) * 100}%`,
+              marginTop: "-56px",
+            }}
+          >
+            <div className="bg-[#071020] border border-[#2A3B57] rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
+              <p className="text-[10px] font-semibold text-white mb-1.5">
+                {formatDate(points[hoverIndex].date)}
+              </p>
+
+              <p className="text-[10px] text-[#FFB21B]">
+                Revenue: ${formatMoney(points[hoverIndex].revenue)}
+              </p>
             </div>
-          )
-        })}
+          </div>
+        )}
       </div>
 
       {/* Chart X Axis */}
       <div className="flex justify-between mt-3 text-[10px] text-[#64748B]">
-        <span>
-          {formatDate(data[0]?.date)}
-        </span>
+        <span>{formatDate(data[0]?.date)}</span>
 
         {data.length > 2 && (
-          <span>
-            {formatDate(
-              data[
-                Math.floor(data.length / 2)
-              ]?.date,
-            )}
-          </span>
+          <span>{formatDate(data[Math.floor(data.length / 2)]?.date)}</span>
         )}
 
-        <span>
-          {formatDate(
-            data[data.length - 1]?.date,
-          )}
-        </span>
+        <span>{formatDate(data[data.length - 1]?.date)}</span>
       </div>
     </div>
-  )
+  );
 }
 
 // =====================================================
 // Breakdown Row
 // =====================================================
 
-function BreakdownRow({
-  label,
-  value,
-  percentage,
-  icon: Icon,
-}) {
+function BreakdownRow({ label, value, percentage, icon: Icon }) {
   return (
     <div className="py-3 border-b border-[#1C2B43] last:border-0">
       <div className="flex items-center justify-between gap-3">
@@ -306,44 +457,31 @@ function BreakdownRow({
           <div
             className="h-full bg-[#FFB21B] rounded-full transition-all duration-500"
             style={{
-              width: `${Math.min(
-                percentage,
-                100,
-              )}%`,
+              width: `${Math.min(percentage, 100)}%`,
             }}
           />
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // =====================================================
 // Dashboard
 // =====================================================
 
-export default function Dashboard({
-  onNavigate,
-}) {
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false)
+export default function Dashboard({ onNavigate }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [dateRange, setDateRange] =
-    useState(
-      getCurrentMonthDates(),
-    )
+  const [dateRange, setDateRange] = useState(getCurrentMonthDates());
 
-  const [dashboard, setDashboard] =
-    useState(null)
+  const [dashboard, setDashboard] = useState(null);
 
-  const [loading, setLoading] =
-    useState(true)
+  const [loading, setLoading] = useState(true);
 
-  const [refreshing, setRefreshing] =
-    useState(false)
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [error, setError] =
-    useState(null)
+  const [error, setError] = useState(null);
 
   // ===================================================
   // Fetch Analytics
@@ -353,102 +491,73 @@ export default function Dashboard({
     async (showRefresh = false) => {
       try {
         if (showRefresh) {
-          setRefreshing(true)
+          setRefreshing(true);
         } else {
-          setLoading(true)
+          setLoading(true);
         }
 
-        setError(null)
+        setError(null);
 
-        const params =
-          new URLSearchParams()
+        const params = new URLSearchParams();
 
         if (dateRange.start) {
-          params.append(
-            'start_date',
-            dateRange.start,
-          )
+          params.append("start_date", dateRange.start);
         }
 
         if (dateRange.end) {
-          params.append(
-            'end_date',
-            dateRange.end,
-          )
+          params.append("end_date", dateRange.end);
         }
 
         // SAME API ROUTE
-        const response =
-          await apiFetch(
-            `/analytics/monthly-revenue?${params.toString()}`,
-          )
+        const response = await apiFetch(
+          `/analytics/monthly-revenue?${params.toString()}`,
+        );
 
-        setDashboard(response)
+        setDashboard(response);
       } catch (err) {
-        console.error(
-          'Dashboard analytics error:',
-          err,
-        )
+        console.error("Dashboard analytics error:", err);
 
-        setError(
-          err?.message ||
-            'Unable to load dashboard data.',
-        )
+        setError(err?.message || "Unable to load dashboard data.");
       } finally {
-        setLoading(false)
-        setRefreshing(false)
+        setLoading(false);
+        setRefreshing(false);
       }
     },
     [dateRange],
-  )
+  );
 
   useEffect(() => {
-    fetchDashboard()
-  }, [fetchDashboard])
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   // ===================================================
   // Data
   // ===================================================
 
-  const financials =
-    dashboard?.financials || {}
+  const financials = dashboard?.financials || {};
 
-  const kpis =
-    dashboard?.kpis || {}
+  const kpis = dashboard?.kpis || {};
 
-  const dailyTrends =
-    dashboard?.daily_trends || []
+  const dailyTrends = dashboard?.daily_trends || [];
 
-  const paymentBreakdown =
-    financials.payment_breakdown || []
+  const paymentBreakdown = financials.payment_breakdown || [];
 
   // ===================================================
   // Financial Values
   // ===================================================
 
-  const totalRevenue =
-    Number(
-      financials.total_revenue || 0,
-    )
+  const totalRevenue = Number(financials.total_revenue || 0);
 
-  const netProfit =
-    Number(
-      financials.net_profit ??
-        financials.total_revenue ??
-        0,
-    )
+  const netProfit = Number(
+    financials.net_profit ?? financials.total_revenue ?? 0,
+  );
 
   // Number of payment records
-  const paymentTransactions =
-    Number(
-      financials.payment_count ??
-        financials.total_payments ??
-        paymentBreakdown.reduce(
-          (sum, item) =>
-            sum + Number(item.count || 0),
-          0,
-        ),
-    )
+  const paymentTransactions = Number(
+    financials.payment_count ??
+      financials.total_payments ??
+      paymentBreakdown.reduce((sum, item) => sum + Number(item.count || 0), 0),
+  );
 
   // ===================================================
   // Payment Breakdown
@@ -456,11 +565,10 @@ export default function Dashboard({
 
   const paymentTotal = useMemo(() => {
     return paymentBreakdown.reduce(
-      (sum, item) =>
-        sum + Number(item.total || 0),
+      (sum, item) => sum + Number(item.total || 0),
       0,
-    )
-  }, [paymentBreakdown])
+    );
+  }, [paymentBreakdown]);
 
   // ===================================================
   // Period
@@ -468,21 +576,19 @@ export default function Dashboard({
 
   const periodLabel = useMemo(() => {
     if (!dashboard?.period) {
-      return 'Current period'
+      return "Current period";
     }
 
-    const start =
-      dashboard.period.start_date
+    const start = dashboard.period.start_date;
 
-    const end =
-      dashboard.period.end_date
+    const end = dashboard.period.end_date;
 
     if (start === end) {
-      return formatDate(start)
+      return formatDate(start);
     }
 
-    return `${formatDate(start)} – ${formatDate(end)}`
-  }, [dashboard])
+    return `${formatDate(start)} – ${formatDate(end)}`;
+  }, [dashboard]);
 
   // ===================================================
   // Loading
@@ -492,17 +598,12 @@ export default function Dashboard({
     return (
       <div className="min-h-screen bg-[#091326] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2
-            size={32}
-            className="animate-spin text-[#FFB21B]"
-          />
+          <Loader2 size={32} className="animate-spin text-[#FFB21B]" />
 
-          <p className="text-sm text-[#8EA0BA]">
-            Loading dashboard...
-          </p>
+          <p className="text-sm text-[#8EA0BA]">Loading dashboard...</p>
         </div>
       </div>
-    )
+    );
   }
 
   // ===================================================
@@ -514,9 +615,7 @@ export default function Dashboard({
       {/* Sidebar */}
       <Sidebar
         open={sidebarOpen}
-        onClose={() =>
-          setSidebarOpen(false)
-        }
+        onClose={() => setSidebarOpen(false)}
         active="Dashboard"
         onNavigate={onNavigate}
       />
@@ -524,26 +623,21 @@ export default function Dashboard({
       <div className="flex-1 min-w-0">
         {/* Top Bar */}
         <TopBar
-          onMenuClick={() =>
-            setSidebarOpen(true)
-          }
+          onMenuClick={() => setSidebarOpen(true)}
           onNavigate={onNavigate}
         />
 
         <main className="max-w-[1500px] mx-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-
           {/* =================================================
               Dashboard Header
           ================================================= */}
 
           <div className="mb-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-
               {/* Title */}
               <div>
                 <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-[#FFB21B] mb-2">
                   <Activity size={14} />
-
                   HOTEL OVERVIEW
                 </div>
 
@@ -552,49 +646,37 @@ export default function Dashboard({
                 </h1>
 
                 <p className="mt-1 text-sm text-[#8EA0BA]">
-                  Monitor your hotel's revenue
-                  and operational performance.
+                  Monitor your hotel's revenue and operational performance.
                 </p>
               </div>
 
               {/* Date Controls */}
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex items-center gap-2 bg-[#0D192D] border border-[#1C2B43] rounded-lg px-3">
-                  <CalendarDays
-                    size={16}
-                    className="text-[#64748B] shrink-0"
-                  />
+                  <CalendarDays size={16} className="text-[#64748B] shrink-0" />
 
                   <input
                     type="date"
                     value={dateRange.start}
                     onChange={(e) =>
-                      setDateRange(
-                        (prev) => ({
-                          ...prev,
-                          start:
-                            e.target.value,
-                        }),
-                      )
+                      setDateRange((prev) => ({
+                        ...prev,
+                        start: e.target.value,
+                      }))
                     }
                     className="bg-transparent py-2.5 text-sm text-[#C4CEDC] outline-none"
                   />
 
-                  <span className="text-[#52627A]">
-                    →
-                  </span>
+                  <span className="text-[#52627A]">→</span>
 
                   <input
                     type="date"
                     value={dateRange.end}
                     onChange={(e) =>
-                      setDateRange(
-                        (prev) => ({
-                          ...prev,
-                          end:
-                            e.target.value,
-                        }),
-                      )
+                      setDateRange((prev) => ({
+                        ...prev,
+                        end: e.target.value,
+                      }))
                     }
                     className="bg-transparent py-2.5 text-sm text-[#C4CEDC] outline-none"
                   />
@@ -602,21 +684,14 @@ export default function Dashboard({
 
                 <button
                   type="button"
-                  onClick={() =>
-                    fetchDashboard(true)
-                  }
+                  onClick={() => fetchDashboard(true)}
                   disabled={refreshing}
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#FFB21B] hover:bg-[#E99D08] text-[#091326] text-sm font-semibold disabled:opacity-60 transition-colors"
                 >
                   <RefreshCw
                     size={15}
-                    className={
-                      refreshing
-                        ? 'animate-spin'
-                        : ''
-                    }
+                    className={refreshing ? "animate-spin" : ""}
                   />
-
                   Refresh
                 </button>
               </div>
@@ -634,9 +709,7 @@ export default function Dashboard({
 
                 <button
                   type="button"
-                  onClick={() =>
-                    fetchDashboard(true)
-                  }
+                  onClick={() => fetchDashboard(true)}
                   className="font-medium text-[#FFB21B] hover:underline"
                 >
                   Retry
@@ -673,8 +746,7 @@ export default function Dashboard({
                 </p>
 
                 <p className="text-lg font-semibold text-white">
-                  {dashboard?.period?.total_days ||
-                    0}
+                  {dashboard?.period?.total_days || 0}
                 </p>
               </div>
             </div>
@@ -685,12 +757,9 @@ export default function Dashboard({
           ================================================= */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-
             <StatCard
               title="Total Revenue"
-              value={formatMoney(
-                totalRevenue,
-              )}
+              value={formatMoney(totalRevenue)}
               valuePrefix="$"
               subtitle="Completed payments"
               icon={DollarSign}
@@ -700,9 +769,7 @@ export default function Dashboard({
 
             <StatCard
               title="Net Revenue"
-              value={formatMoney(
-                totalRevenue,
-              )}
+              value={formatMoney(totalRevenue)}
               valuePrefix="$"
               subtitle="Revenue collected"
               icon={TrendingUp}
@@ -712,9 +779,7 @@ export default function Dashboard({
 
             <StatCard
               title="Payment Transactions"
-              value={formatNumber(
-                paymentTransactions,
-              )}
+              value={formatNumber(paymentTransactions)}
               subtitle="Completed payment records"
               icon={CreditCard}
               iconColor="text-[#36A8FF]"
@@ -723,11 +788,7 @@ export default function Dashboard({
 
             <StatCard
               title="Revenue Margin"
-              value={
-                totalRevenue > 0
-                  ? '100%'
-                  : '0%'
-              }
+              value={totalRevenue > 0 ? "100%" : "0%"}
               subtitle="Revenue after collected payments"
               icon={Percent}
               iconColor="text-[#B98CFF]"
@@ -740,13 +801,9 @@ export default function Dashboard({
           ================================================= */}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
             <StatCard
               title="Occupancy"
-              value={
-                kpis.occupancy_rate ||
-                '0%'
-              }
+              value={kpis.occupancy_rate || "0%"}
               subtitle="Room nights sold"
               icon={BedDouble}
               iconColor="text-[#B98CFF]"
@@ -755,9 +812,7 @@ export default function Dashboard({
 
             <StatCard
               title="Rooms Sold"
-              value={formatNumber(
-                kpis.rooms_sold,
-              )}
+              value={formatNumber(kpis.rooms_sold)}
               subtitle="Room nights"
               icon={Activity}
               iconColor="text-[#36A8FF]"
@@ -766,9 +821,7 @@ export default function Dashboard({
 
             <StatCard
               title="ADR"
-              value={formatMoney(
-                kpis.adr,
-              )}
+              value={formatMoney(kpis.adr)}
               valuePrefix="$"
               subtitle="Average daily rate"
               icon={DollarSign}
@@ -778,9 +831,7 @@ export default function Dashboard({
 
             <StatCard
               title="RevPAR"
-              value={formatMoney(
-                kpis.rev_par,
-              )}
+              value={formatMoney(kpis.rev_par)}
               valuePrefix="$"
               subtitle="Revenue per available room"
               icon={TrendingUp}
@@ -794,7 +845,6 @@ export default function Dashboard({
           ================================================= */}
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-
             {/* Revenue Chart */}
             <div className="xl:col-span-2 bg-[#0D192D] border border-[#1C2B43] rounded-xl p-5">
               <SectionHeader
@@ -802,9 +852,7 @@ export default function Dashboard({
                 subtitle="Revenue collected from room bookings"
               />
 
-              <RevenueChart
-                data={dailyTrends}
-              />
+              <RevenueChart data={dailyTrends} />
             </div>
 
             {/* Financial Summary */}
@@ -815,18 +863,13 @@ export default function Dashboard({
               />
 
               <div className="space-y-6">
-
                 {/* Revenue */}
                 <div>
                   <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-[#8EA0BA]">
-                      Total Revenue
-                    </span>
+                    <span className="text-[#8EA0BA]">Total Revenue</span>
 
                     <span className="font-semibold text-white">
-                      ${formatMoney(
-                        totalRevenue,
-                      )}
+                      ${formatMoney(totalRevenue)}
                     </span>
                   </div>
 
@@ -834,10 +877,7 @@ export default function Dashboard({
                     <div
                       className="h-full bg-[#FFB21B] rounded-full"
                       style={{
-                        width:
-                          totalRevenue > 0
-                            ? '100%'
-                            : '0%',
+                        width: totalRevenue > 0 ? "100%" : "0%",
                       }}
                     />
                   </div>
@@ -846,14 +886,10 @@ export default function Dashboard({
                 {/* Payment Transactions */}
                 <div>
                   <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-[#8EA0BA]">
-                      Payment Transactions
-                    </span>
+                    <span className="text-[#8EA0BA]">Payment Transactions</span>
 
                     <span className="font-semibold text-white">
-                      {formatNumber(
-                        paymentTransactions,
-                      )}
+                      {formatNumber(paymentTransactions)}
                     </span>
                   </div>
 
@@ -861,11 +897,7 @@ export default function Dashboard({
                     <div
                       className="h-full bg-[#36A8FF] rounded-full"
                       style={{
-                        width:
-                          paymentTransactions >
-                          0
-                            ? '100%'
-                            : '0%',
+                        width: paymentTransactions > 0 ? "100%" : "0%",
                       }}
                     />
                   </div>
@@ -873,27 +905,20 @@ export default function Dashboard({
 
                 {/* Revenue Per Payment */}
                 <div className="border-t border-[#1C2B43] pt-5">
-                  <p className="text-xs text-[#64748B]">
-                    Average Payment
-                  </p>
+                  <p className="text-xs text-[#64748B]">Average Payment</p>
 
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-2xl font-bold text-[#20D39B]">
                       $
                       {formatMoney(
-                        paymentTransactions >
-                          0
-                          ? totalRevenue /
-                              paymentTransactions
+                        paymentTransactions > 0
+                          ? totalRevenue / paymentTransactions
                           : 0,
                       )}
                     </p>
 
                     <div className="w-9 h-9 rounded-lg bg-[#20D39B]/10 flex items-center justify-center">
-                      <ArrowUpRight
-                        size={19}
-                        className="text-[#20D39B]"
-                      />
+                      <ArrowUpRight size={19} className="text-[#20D39B]" />
                     </div>
                   </div>
                 </div>
@@ -907,7 +932,6 @@ export default function Dashboard({
 
           <div className="mb-6">
             <div className="bg-[#0D192D] border border-[#1C2B43] rounded-xl p-5">
-
               <SectionHeader
                 title="Payment Methods"
                 subtitle="Revenue collected by payment method"
@@ -915,10 +939,7 @@ export default function Dashboard({
 
               {paymentBreakdown.length === 0 ? (
                 <div className="py-10 text-center">
-                  <CreditCard
-                    size={28}
-                    className="mx-auto text-[#334155]"
-                  />
+                  <CreditCard size={28} className="mx-auto text-[#334155]" />
 
                   <p className="mt-3 text-sm text-[#64748B]">
                     No payment data available.
@@ -926,38 +947,22 @@ export default function Dashboard({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
-                  {paymentBreakdown.map(
-                    (item, index) => {
-                      const value =
-                        Number(
-                          item.total || 0,
-                        )
+                  {paymentBreakdown.map((item, index) => {
+                    const value = Number(item.total || 0);
 
-                      const percentage =
-                        paymentTotal > 0
-                          ? (value /
-                              paymentTotal) *
-                            100
-                          : 0
+                    const percentage =
+                      paymentTotal > 0 ? (value / paymentTotal) * 100 : 0;
 
-                      return (
-                        <BreakdownRow
-                          key={
-                            item.payment_method ||
-                            index
-                          }
-                          label={
-                            item.payment_method
-                          }
-                          value={value}
-                          percentage={
-                            percentage
-                          }
-                          icon={CreditCard}
-                        />
-                      )
-                    },
-                  )}
+                    return (
+                      <BreakdownRow
+                        key={item.payment_method || index}
+                        label={item.payment_method}
+                        value={value}
+                        percentage={percentage}
+                        icon={CreditCard}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -968,28 +973,22 @@ export default function Dashboard({
           ================================================= */}
 
           <div className="bg-[#0D192D] border border-[#1C2B43] rounded-xl p-5 mb-8">
-
             <SectionHeader
               title="Room Performance"
               subtitle="Availability and occupancy overview"
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
               {/* Available Room Nights */}
               <div className="rounded-lg bg-[#111F37] border border-[#1C2B43] p-4">
                 <div className="flex items-center gap-2 text-[#64748B] mb-3">
                   <BedDouble size={16} />
 
-                  <span className="text-xs">
-                    Available Room Nights
-                  </span>
+                  <span className="text-xs">Available Room Nights</span>
                 </div>
 
                 <p className="text-xl font-bold text-white">
-                  {formatNumber(
-                    kpis.total_available_room_nights,
-                  )}
+                  {formatNumber(kpis.total_available_room_nights)}
                 </p>
               </div>
 
@@ -998,15 +997,11 @@ export default function Dashboard({
                 <div className="flex items-center gap-2 text-[#64748B] mb-3">
                   <Activity size={16} />
 
-                  <span className="text-xs">
-                    Room Nights Sold
-                  </span>
+                  <span className="text-xs">Room Nights Sold</span>
                 </div>
 
                 <p className="text-xl font-bold text-white">
-                  {formatNumber(
-                    kpis.rooms_sold,
-                  )}
+                  {formatNumber(kpis.rooms_sold)}
                 </p>
               </div>
 
@@ -1015,21 +1010,17 @@ export default function Dashboard({
                 <div className="flex items-center gap-2 text-[#FFB21B] mb-3">
                   <TrendingUp size={16} />
 
-                  <span className="text-xs">
-                    Occupancy Rate
-                  </span>
+                  <span className="text-xs">Occupancy Rate</span>
                 </div>
 
                 <p className="text-xl font-bold text-white">
-                  {kpis.occupancy_rate ||
-                    '0%'}
+                  {kpis.occupancy_rate || "0%"}
                 </p>
               </div>
             </div>
           </div>
-
         </main>
       </div>
     </div>
-  )
+  );
 }
