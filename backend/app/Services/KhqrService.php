@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Exception;
+use Illuminate\Support\Facades\Log;
 use KHQR\BakongKHQR;
 use KHQR\Helpers\KHQRData;
 use KHQR\Models\IndividualInfo;
@@ -106,7 +107,7 @@ public function generateQr(string $billNumber, float $amount, string $currency =
     /**
      * Verify payment status against NBC Bakong API.
      */
-    public function verifyTransaction(string $md5Hash): array
+  public function verifyTransaction(string $md5Hash): array
     {
         if (!$this->apiToken) {
             return [
@@ -119,21 +120,28 @@ public function generateQr(string $billNumber, float $amount, string $currency =
 
         try {
             $bakongKhqr = new BakongKHQR($this->apiToken);
+            $response   = $bakongKhqr->checkTransactionByMD5($md5Hash);
 
-            // Fix 2: Call checkTransactionByMD5 method to fetch response
-            $response = $bakongKhqr->checkTransactionByMD5($md5Hash);
+            // Convert Response object/array to array safely
+            $resArray = is_object($response) ? json_decode(json_encode($response), true) : (array) $response;
 
-            $status = $response->data['status'] ?? 'PENDING';
-            $isPaid = in_array($status, ['SUCCESS', '0', 0], true) || ($response->data['errorCode'] ?? null) === 0;
+            Log::info('Bakong Verify Response Raw:', $resArray);
+
+            $responseCode = $resArray['responseCode'] ?? $resArray['errorCode'] ?? null;
+            $dataPayload  = $resArray['data'] ?? null;
+
+            // Bakong success criteria: responseCode === 0 AND non-empty transaction data
+            $isPaid = ($responseCode === 0 || $responseCode === '0') && !empty($dataPayload);
 
             return [
                 'success' => true,
                 'paid'    => $isPaid,
                 'status'  => $isPaid ? 'SUCCESS' : 'PENDING',
-                'raw'     => $response->data ?? [],
+                'raw'     => $resArray,
             ];
 
         } catch (Exception $e) {
+            Log::error('Bakong Verify Exception: ' . $e->getMessage());
             return [
                 'success' => false,
                 'paid'    => false,
