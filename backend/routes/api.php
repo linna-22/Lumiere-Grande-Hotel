@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
+use App\Http\Controllers\Api\HouseKeepingController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MonthlyRevenueController;
 use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
@@ -162,4 +163,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::post('/paymentCash', [PaymentController::class, 'processCashPayment']);
 
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('housekeeping')->group(function () {
+    Route::get('/tasks', [HouseKeepingController::class, 'index']);
+    Route::post('/tasks', [HousekeepingController::class, 'store']);
+    Route::patch('/tasks/{id}/assign', [HousekeepingController::class, 'assignStaff']);
+    Route::patch('/tasks/{id}/status', [HousekeepingController::class, 'updateStatus']);
+    Route::post('/tasks/{id}/approve', [HousekeepingController::class, 'approveTask']);
+});
 });

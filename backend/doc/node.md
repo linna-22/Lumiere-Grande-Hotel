@@ -115,3 +115,80 @@ export default function Dashboard() {
     </div>
   );
 }
+
+<!-- ===========================HouseKeeping============================================== -->
+ * We intergrate it with WebSocket also
+📢 Housekeeping Module & Real-Time Sync Specification
+🎯 Overview
+The Housekeeping module manages room cleaning tasks after guest checkouts. When a supervisor approves a cleaned room, the room's status instantly transitions to available, triggering a WebSocket broadcast to update the front-desk UI without requiring a manual page refresh.
+
+1. Room & Task State Definitions
+Room Statuses (rooms.status)
+occupied: Guest is currently in the room.
+
+dirty: Guest checked out; room requires cleaning.
+
+available: Room is inspected, clean, and ready for new guest check-ins.
+
+Housekeeping Task Statuses (housekeeping_tasks.status)
+pending: Task created, waiting for staff assignment or cleanup.
+
+in_progress: Housekeeper is currently cleaning the room.
+
+completed: Housekeeper finished cleaning; waiting for supervisor inspection.
+
+inspected: Supervisor approved the cleanup. (Triggers room state to available).
+
+2. End-to-End Workflow
+[Guest Checkout] ──> Room: dirty | Task: pending
+                          │
+[Housekeeper Cleans] ──> Task: in_progress ──> Task: completed
+                          │
+[Supervisor Approves] ──> Task: inspected ──> Room: available
+                          │
+              ⚡ WEBSOCKET BROADCAST SENT
+                          │
+[Front-Desk UI] ──> Room card instantly updates to "available" (Green)
+
+
+* Guest Checkout: API sets room.status = "dirty" and auto-creates a housekeeping task with status = "pending".
+
+Cleaning Phase: Housekeeper updates task status to "in_progress", then "completed".
+
+Supervisor Approval: Supervisor hits the approve endpoint. The backend updates task status to "inspected", changes room status to available, and fires a WebSocket event.
+
+Real-Time Update: The front-desk application receives the WebSocket event and updates the room status in the UI immediately.
+
+3. API END POINT 
+
+GET /api/housekeeping/tasks — Fetch tasks list (supports query params: ?status=pending or ?assigned_to={userId}).
+
+POST /api/housekeeping/tasks — Create manual task (e.g., maintenance/deep clean).
+
+PATCH /api/housekeeping/tasks/{id}/assign — Assign task to housekeeper ({ "assigned_to": userId }).
+
+PATCH /api/housekeeping/tasks/{id}/status — Housekeeper updates status ({ "status": "in_progress" | "completed" }).
+
+POST /api/housekeeping/tasks/{id}/approve — Supervisor approves room (triggers WebSocket event).
+
+* You have to set up Laravel Echo 
+
+example logic 
+
+import Echo from 'laravel-echo';
+
+// Subscribe to public channel
+Echo.channel('rooms-board')
+    .listen('.room.updated', (event) => {
+        // event.room contains the updated Room object
+        const updatedRoom = event.room;
+
+        console.log(`Room ${updatedRoom.room_number} is now ${updatedRoom.status}`);
+
+        // Example: Update React/Vue state array
+        setRooms(prevRooms => 
+            prevRooms.map(room => 
+                room.id === updatedRoom.id ? updatedRoom : room
+            )
+        );
+    });
