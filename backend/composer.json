@@ -10,6 +10,7 @@
         "fidele007/bakong-khqr-php": "^1.2",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.0",
+        "laravel/reverb": "@beta",
         "laravel/sanctum": "^3.3",
         "laravel/socialite": "^5.31",
         "laravel/tinker": "^2.8",

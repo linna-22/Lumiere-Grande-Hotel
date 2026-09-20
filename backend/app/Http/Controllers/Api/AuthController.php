@@ -42,6 +42,7 @@ class AuthController extends Controller
         try {
 
             $validated = $request->validate([
+
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|max:255|unique:users',
                 'password' => [
@@ -49,6 +50,7 @@ class AuthController extends Controller
                     'confirmed',
                     Password::min(8)->letters()->numbers()->symbols()
                 ],
+                
             ]);
 
             $users = User::create([
