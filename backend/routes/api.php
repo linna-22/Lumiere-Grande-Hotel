@@ -20,8 +20,7 @@ use App\Http\Controllers\Api\PaymentController;
 |--------------------------------------------------------------------------
 */
 
-// Public Read-Only Routes
-// Public Read-Only & CRUD Routes (Unprotected for Pre-Demo)
+
 Route::get('/login', function () {
     return response()->json(['message' => 'Unauthenticated.'], 401);
 })->name('login');
@@ -34,9 +33,15 @@ Route::get('/room-types/{id}', [RoomTypeController::class, 'show'])->name('room-
 Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
 
 Route::middleware('throttle:5,1')->group(function () {
+
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login'); 
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify.otp');
+
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/verify-reset-otp', [AuthController::class, 'verifyResetOtp']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
 });
 
 // OAuth Routes (Google, GitHub, Facebook)
@@ -147,7 +152,9 @@ Route::get('/analytics/monthly-revenue', [MonthlyRevenueController::class, 'getM
 Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/invoices', [InvoiceController::class, 'index']);
+
     Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
+
 });
 
 Route::middleware(['auth:sanctum'])->group(function () {

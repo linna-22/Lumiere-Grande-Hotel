@@ -125,6 +125,7 @@ public function getMonthlyRevenue(Request $request)
             'daily_trends' => $dailyTrends,
         ]);
     }
+    
 }
     
     

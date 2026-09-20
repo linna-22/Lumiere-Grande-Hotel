@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SendOtpMail;
 use App\Models\Guests;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -50,6 +52,7 @@ class AuthController extends Controller
             ]);
 
             $users = User::create([
+                
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
@@ -83,55 +86,85 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        // 1. Throttle requests by IP + email to prevent brute-force attacks
+        $throttleKey = Str::transliterate(Str::lower($request->input('email')).'|'.$request->ip());
 
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            return response()->json([
+                'message' => "Too many login attempts. Please try again in {$seconds} seconds."
+            ], 429);
+        }
+
+        // 2. Validate request input
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string'
         ]);
 
-        $users = User::where('email', strtolower($credentials['email']))->first();
+        // 3. Retrieve user by email
+        $user = User::where('email', strtolower($credentials['email']))->first();
 
-        if (!$users || !Hash::check($credentials['password'], $users->password)) {
+        // 4. Verify user existence and password
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
 
-            return response()->json(['message' => "Inccorect email or password"], 401);
-        }
-
-        if ($users->status !== 'active') {
-
-            return response()->json(['message' => "Your account have been suspence"], 403);
-        }
-
-        $staffRoles = ['super_admin', 'admin', 'cashire', 'manager'];
-
-        $requiredOtp = in_array($users->role, $staffRoles) || $users->is_2fa_enabled;
-
-        if ($requiredOtp) {
-
-            $otpCode = random_int(100000, 999999);
-
-            Cache::put("otp_{$users->email}", $otpCode, now()->addMinutes(3));
-
-            Mail::to($users->email)->send(new SendOtpMail($otpCode, 'login'));
+            RateLimiter::hit($throttleKey, 60);
 
             return response()->json([
-                'requires_2fa' => true,
-                'user_id' => $users->id,
-                'message' => "Your account have to verify code",
-                'dev_otp' => $otpCode
-            ], 200);
+                'message' => 'Incorrect email or password.'
+            ], 401);
         }
-        
-        $this->ensureGuestProfileExists($users);
-        
-        $users->tokens()->delete();
 
-        $token = $users->createToken('auth_token')->plainTextToken;
+        // 5. Check user account status
+        if ($user->status !== 'active') {
+            return response()->json([
+                'message' => 'Your account has been suspended.'
+            ], 403);
+        }
+
+        // Clear rate limiter on successful authentication
+        RateLimiter::clear($throttleKey);
+
+        // 6. Role & 2FA Enforcement
+        $staffRoles = ['super_admin', 'admin', 'cashier', 'manager'];
+        $requiresOtp = in_array($user->role, $staffRoles) || (bool) $user->is_2fa_enabled;
+
+        if ($requiresOtp) {
+            $otpCode = random_int(100000, 999999);
+
+            // Store hashed/plain OTP code in Cache (3 minutes)
+            Cache::put("otp_{$user->id}", $otpCode, now()->addMinutes(3));
+
+            // Queue mail sending so API response is fast
+            Mail::to($user->email)->queue(new SendOtpMail($otpCode, 'login'));
+
+            $responseData = [
+                'requires_2fa' => true,
+                'user_id' => $user->id,
+                'message' => 'Verification code sent to your email.'
+            ];
+
+            // Debug OTP only in local development environment
+            if (app()->environment('local')) {
+                $responseData['dev_otp'] = $otpCode;
+            }
+
+            return response()->json($responseData, 200);
+        }
+
+        // 7. Ensure guest profile exists and issue token
+        $this->ensureGuestProfileExists($user);
+
+        // Revoke old tokens before issuing new one
+        $user->tokens()->delete();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => "login success",
+            'message' => 'Login successful.',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $users->load('guest')
+            'user' => $user->load('guest')
         ], 200);
     }
 

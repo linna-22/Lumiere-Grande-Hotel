@@ -25,8 +25,14 @@ class ReservationController extends Controller
 
     public function index(Request $request){
 
-    $query = Reservations::with(['guest', 'rooms', 'invoice', 'payments', 'creator']);
-
+    $query = Reservations::with([
+    'guest',
+    'reservationRooms.room',
+    'reservationRooms.roomType',
+    'invoice',
+    'payments',
+    'creator',
+]);
     if($request->has('status')){
 
     $query->where('status', $request->query('status'));
