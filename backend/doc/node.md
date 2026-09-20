@@ -5,7 +5,7 @@ composer require laravel/reverb:@beta
 php artisan reverb:install
 
 
-<!-- ===============Notification Handle -->
+<!-- ===============Notification Handle============= -->
 
 To handle real-time booking alerts on the dashboard, you do not need to create or poll any HTTP API endpoints. Instead, connect to our Laravel Reverb WebSocket server using Laravel Echo and listen on the public channel notifications for the .notification.alert event. When a guest submits a booking, Reverb will automatically push an event payload containing the notification type, message, and data (which includes reservation_id, guest_name, and amount) directly to your active WebSocket connection. Your component can simply consume this incoming payload to trigger an instant toast alert, play a chime sound, or update dashboard counters live without requiring a page refresh.
 

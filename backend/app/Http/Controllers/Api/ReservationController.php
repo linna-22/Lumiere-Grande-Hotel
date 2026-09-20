@@ -117,11 +117,29 @@ class ReservationController extends Controller
                 $paymentStatus = 'partially_paid';
             }
 
+            foreach($validated['rooms'] as $roomData){
+                $isBooked = Reservation_rooms::where('room_id', $roomData['room_id'])
+                ->whereHas('reservation', function($query) use ($validated) {
+                    $query->whereIn('status', ['confirmed', 'checked_in'])
+                    ->where('check_in_date', '<', $validated['check_out_date'])
+                    ->where('check_out_date', '>', $validated['check_in_date']);
+                })
+
+                ->exists();
+
+                if($isBooked){
+                    $room = Rooms::find($roomData['room_id']);
+
+                    return response()->json([
+                        'message' => "Room {$room->room_number} have aleady been booked",
+                    ], 422);
+                }
+            }
             // 4. Reservation Unique Code Generation
             do {
                 $reservationCode = 'RES-' . strtoupper(Str::random(6));
             } while (Reservations::where('reservation_code', $reservationCode)->exists());
-
+            
             // 5. Create Reservation Record
             $reservation = Reservations::create([
                 'guest_id'         => $guestId,
@@ -141,7 +159,7 @@ class ReservationController extends Controller
             foreach ($validated['rooms'] as $roomData) {
                 $reservation->reservationRooms()->create([
                     'room_type_id' => $roomData['room_type_id'],
-                    'room_id'      => null, // Assigned at check-in
+                    'room_id'      => $roomData['room_id'], // Assigned at check-in
                     'nightly_rate' => $roomData['nightly_rate'],
                     'status'       => 'reserved',
                 ]);
