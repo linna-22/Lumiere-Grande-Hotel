@@ -124,11 +124,11 @@ Route::middleware('throttle:5,1')->group(function() {
 });
 
 Route::post('/reservation', [ReservationController::class, 'store']);
- Route::get('/reservation', [ReservationController::class, 'index'])->name('reservation.index');
  
 Route::middleware('auth:sanctum')->group(function() {
 
-   
+     Route::get('/reservation', [ReservationController::class, 'index'])->name('reservation.index');
+
     Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
     
 
