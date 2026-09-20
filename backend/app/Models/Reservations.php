@@ -12,7 +12,7 @@ class Reservations extends Model
 {
     use HasFactory;
 
-  
+
 
     protected $fillable = [
         'guest_id',
@@ -32,26 +32,22 @@ class Reservations extends Model
     {
 
         return $this->belongsTo(Guests::class);
-
     }
 
     public function creator(): BelongsTo
     {
 
         return $this->belongsTo(User::class, 'created_by');
-
     }
 
     public function invoice(): HasOne
     {
-
-        return $this->hasOne(Invoices::class);
+        return $this->hasOne(Invoices::class, 'reservation_id');
     }
 
     public function payments(): HasMany
     {
-
-        return $this->hasMany(Payments::class);
+        return $this->hasMany(Payments::class, 'reservation_id');
     }
 
     public function reservationRooms(): HasMany
@@ -66,7 +62,4 @@ class Reservations extends Model
     {
         return $this->hasOne(Reviews::class);
     }
-
-
-
 }

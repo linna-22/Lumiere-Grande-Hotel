@@ -33,6 +33,7 @@ class ReservationController extends Controller
     'payments',
     'creator',
 ]);
+
     if($request->has('status')){
 
     $query->where('status', $request->query('status'));
