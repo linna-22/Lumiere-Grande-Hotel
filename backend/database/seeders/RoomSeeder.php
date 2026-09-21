@@ -2,30 +2,32 @@
 
 namespace Database\Seeders;
 
-use App\Models\Facility;
 use App\Models\Room_types;
 use App\Models\Rooms;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class RoomSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Pexels photo IDs of hotel rooms, grouped by room type.
+     * Each room gets a random image from its type's pool; images are
+     * shuffled first so rooms of the same type don't repeat a photo.
      */
-     public function run(): void
+    private const IMAGES = [
+        'classic' => [237371, 28011238, 18801062, 36162677, 27638174],
+        'deluxe'  => [33389169, 7745929, 34040619, 32021575, 28962539],
+        'suite'   => [5860693, 4493299, 36767624, 31146633, 7746080],
+        'vip'     => [7722164, 34496702, 36916378, 34496701, 14750394],
+    ];
+
+    private function imageUrl(int $photoId): string
     {
-    //     if (Room_types::count() === 0) {
-            
-    //         Room_types::factory()->count(4)->create();
-    //     }
+        return "https://images.pexels.com/photos/{$photoId}/pexels-photo-{$photoId}.jpeg?auto=compress&cs=tinysrgb&w=1200";
+    }
 
-    //     // 2. Seed 15 mock rooms distributed across those room types
-    //     Rooms::factory()->count(15)->create();
-    // }
-
-    $roomTypes = Room_types::all();
+    public function run(): void
+    {
+        $roomTypes = Room_types::all();
 
         if ($roomTypes->isEmpty()) {
             $this->command->error('Please run RoomTypeSeeder first!');
@@ -33,59 +35,75 @@ class RoomSeeder extends Seeder
         }
 
         // Get IDs or fallback to first room type
-        $classicId = $roomTypes->where('name', 'Lumière Classic')->first()->id ?? $roomTypes->first()->id;
-        $deluxeId  = $roomTypes->where('name', 'Deluxe Ocean View')->first()->id ?? $roomTypes->first()->id;
-        $suiteId   = $roomTypes->where('name', 'Executive Suite')->first()->id ?? $roomTypes->first()->id;
-        $vipId     = $roomTypes->where('name', 'Presidential Suite')->first()->id ?? $roomTypes->first()->id;
-
-        // Sample Cloudinary test image
-        $sampleImage = 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg';
-        $cloudinaryId = 'sample';
-
-        // Array of 20 Rooms
-        $rooms = [
-            // Floor 1 (Classic Rooms)
-            ['room_number' => '101', 'room_type_id' => $classicId, 'status' => 'available'],
-            ['room_number' => '102', 'room_type_id' => $classicId, 'status' => 'occupied'],
-            ['room_number' => '103', 'room_type_id' => $classicId, 'status' => 'available'],
-            ['room_number' => '104', 'room_type_id' => $classicId, 'status' => 'reserved'],
-            ['room_number' => '105', 'room_type_id' => $classicId, 'status' => 'cleaning'],
-
-            // Floor 2 (Deluxe Rooms)
-            ['room_number' => '201', 'room_type_id' => $deluxeId,  'status' => 'available'],
-            ['room_number' => '202', 'room_type_id' => $deluxeId,  'status' => 'occupied'],
-            ['room_number' => '203', 'room_type_id' => $deluxeId,  'status' => 'available'],
-            ['room_number' => '204', 'room_type_id' => $deluxeId,  'status' => 'maintenance'],
-            ['room_number' => '205', 'room_type_id' => $deluxeId,  'status' => 'reserved'],
-
-            // Floor 3 (Executive Suites)
-            ['room_number' => '301', 'room_type_id' => $suiteId,   'status' => 'available'],
-            ['room_number' => '302', 'room_type_id' => $suiteId,   'status' => 'occupied'],
-            ['room_number' => '303', 'room_type_id' => $suiteId,   'status' => 'cleaning'],
-            ['room_number' => '304', 'room_type_id' => $suiteId,   'status' => 'available'],
-            ['room_number' => '305', 'room_type_id' => $suiteId,   'status' => 'reserved'],
-
-            // Floor 4 (Presidential Suites)
-            ['room_number' => '401', 'room_type_id' => $vipId,     'status' => 'available'],
-            ['room_number' => '402', 'room_type_id' => $vipId,     'status' => 'occupied'],
-            ['room_number' => '403', 'room_type_id' => $vipId,     'status' => 'available'],
-            ['room_number' => '404', 'room_type_id' => $vipId,     'status' => 'maintenance'],
-            ['room_number' => '405', 'room_type_id' => $vipId,     'status' => 'cleaning'],
+        $typeIds = [
+            'classic' => $roomTypes->where('name', 'Lumière Classic')->first()->id ?? $roomTypes->first()->id,
+            'deluxe'  => $roomTypes->where('name', 'Deluxe Ocean View')->first()->id ?? $roomTypes->first()->id,
+            'suite'   => $roomTypes->where('name', 'Executive Suite')->first()->id ?? $roomTypes->first()->id,
+            'vip'     => $roomTypes->where('name', 'Presidential Suite')->first()->id ?? $roomTypes->first()->id,
         ];
 
-        // Populate database
-        foreach ($rooms as $data) {
-            $data['image_url'] = $sampleImage;
-            $data['cloudinary_id'] = $cloudinaryId;
+        // 20 rooms: room_number => status, grouped by room type
+        $roomsByType = [
+            // Floor 1 (Classic Rooms)
+            'classic' => [
+                '101' => 'available',
+                '102' => 'occupied',
+                '103' => 'available',
+                '104' => 'reserved',
+                '105' => 'cleaning',
+            ],
+            // Floor 2 (Deluxe Rooms)
+            'deluxe' => [
+                '201' => 'available',
+                '202' => 'occupied',
+                '203' => 'available',
+                '204' => 'maintenance',
+                '205' => 'reserved',
+            ],
+            // Floor 3 (Executive Suites)
+            'suite' => [
+                '301' => 'available',
+                '302' => 'occupied',
+                '303' => 'cleaning',
+                '304' => 'available',
+                '305' => 'reserved',
+            ],
+            // Floor 4 (Presidential Suites)
+            'vip' => [
+                '401' => 'available',
+                '402' => 'occupied',
+                '403' => 'available',
+                '404' => 'maintenance',
+                '405' => 'cleaning',
+            ],
+        ];
 
-            Rooms::firstOrCreate(['room_number' => $data['room_number']], $data);
+        foreach ($roomsByType as $type => $rooms) {
+            $pool = collect(self::IMAGES[$type])->shuffle()->values();
+            $i = 0;
+
+            foreach ($rooms as $roomNumber => $status) {
+                $photoId = $pool[$i++ % $pool->count()];
+
+                $room = Rooms::firstOrCreate(
+                    ['room_number' => (string) $roomNumber],
+                    [
+                        'room_type_id'  => $typeIds[$type],
+                        'status'        => $status,
+                        'image_url'     => $this->imageUrl($photoId),
+                        'cloudinary_id' => null, // external image, not stored on Cloudinary
+                    ]
+                );
+
+                // Room already existed (e.g. seeded with the old sample image):
+                // refresh only the image, leave status and other data untouched.
+                if (! $room->wasRecentlyCreated) {
+                    $room->update([
+                        'image_url'     => $this->imageUrl($photoId),
+                        'cloudinary_id' => null,
+                    ]);
+                }
+            }
         }
     }
-
-    
-    }
-
-  
-    
-
-
+}
