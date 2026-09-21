@@ -13,7 +13,7 @@ class InvoiceController extends Controller
     public function index(Request $request)
     {
 
-        $query = Invoices::with(['reservation.guest', 'reservation.room']);
+        $query = Invoices::with(['reservation.guest', 'reservation.reservationRooms.room']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -38,7 +38,7 @@ class InvoiceController extends Controller
         $formattedData = $invoices->getCollection()->transform(function ($invoice) {
             $reservation = $invoice->reservation;
             $guest = $reservation->guest ?? null;
-            $room = $reservation->room ?? null;
+            $room = $reservation?->reservationRooms->first()?->room;
 
             return [
                 'id'             => $invoice->id,
@@ -76,7 +76,7 @@ class InvoiceController extends Controller
 
         $invoice = Invoices::with([
             'reservation.guest',
-            'reservation.room'
+            'reservation.reservationRooms.room'
         ])->findOrFail($id);
 
         return response()->json([
