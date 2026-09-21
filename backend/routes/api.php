@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CheckInController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
@@ -136,7 +137,6 @@ Route::middleware('auth:sanctum')->group(function() {
 });
 
 Route::apiResource('reservations', ReservationController::class);
-Route::post('reservations/{code}/settle-checkin', [ReservationController::class, 'settleAndCheck']);
 
 Route::prefix('payments/khqr')->group(function () {
     
@@ -172,5 +172,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/tasks/{id}/assign', [HousekeepingController::class, 'assignStaff']);
     Route::patch('/tasks/{id}/status', [HousekeepingController::class, 'updateStatus']);
     Route::post('/tasks/{id}/approve', [HousekeepingController::class, 'approveTask']);
+});
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+
+Route::prefix('check-in')->group(function () {
+    
+    Route::get('/search', [CheckInController::class, 'searchOrInit']);
+    Route::post('/walk-in', [CheckInController::class, 'createWalkIn']);
+    Route::post('/{id}/verify-guest', [CheckInController::class, 'verifyGuest']);
+    Route::post('/{id}/assign-room', [CheckInController::class, 'assignRoom']);
+    
+    Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
 });
 });

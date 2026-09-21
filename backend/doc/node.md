@@ -192,3 +192,68 @@ Echo.channel('rooms-board')
             )
         );
     });
+
+    <!--=========================Check IN controller=================================== -->
+
+
+* Workflow Breakdown
+
+STEP 1: Guest Search or Walk-In
+  ├─ Existing Reservation ──> GET  /api/check-in/search?query={term}
+  └─ Walk-In Draft         ──> POST /api/check-in/walk-in
+
+STEP 2: Guest ID Verification
+  └─ POST /api/check-in/{id}/verify-guest (Updates name, nationality & photo)
+
+STEP 3: Room Assignment
+  └─ POST /api/check-in/{id}/assign-room (Locks room for reservation)
+
+STEP 4: Balance Settlement & Check-In
+  └─ POST /api/check-in/{id}/settle (Executes existing ReservationController logic)
+------------------------------------------------------------------------------------------------
+* Step-by-Step Breakdown
+STEP 1: Find Booking or Create Walk-In
+Goal: Identify which reservation we are working on.
+
+Flow:
+
+If the guest already booked online, search by name, phone, or code using GET /api/check-in/search.
+
+If the guest is a walk-in, submit their basic info to POST /api/check-in/walk-in.
+
+Output: You receive a reservation_id (e.g., 15), which you hold in frontend state for Steps 2, 3, and 4.
+
+STEP 2: Verify Guest Identity
+Goal: Collect mandatory guest details and identity documents upon arrival.
+
+Flow: Submit guest information (and optionally an ID/Passport photo scan) to POST /api/check-in/{reservation_id}/verify-guest.
+
+Output: Guest profile is updated in the database and linked to the reservation.
+
+STEP 3: Assign Room
+Goal: Assign a specific physical room number to the guest.
+
+Flow: Display available clean rooms in the selected category and send the chosen room ID to POST /api/check-in/{reservation_id}/assign-room.
+
+Output: The room is pre-assigned to this reservation.
+
+STEP 4: Settle Payment & Finalize Check-In
+Goal: Collect remaining payment balance (if any) and finalize the check-in process.
+
+Flow:
+
+Check remaining balance.
+
+If balance > 0, collect payment via Cash or Bakong KHQR.
+
+Send payment details and confirmation to POST /api/check-in/{reservation_id}/settle.
+
+Output:
+
+Reservation status changes to checked_in.
+
+Room status changes to occupied.
+
+Invoice payment status is updated to paid.
+
+Check-in complete!

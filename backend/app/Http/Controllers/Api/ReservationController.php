@@ -117,17 +117,17 @@ class ReservationController extends Controller
                 $paymentStatus = 'partially_paid';
             }
 
-            foreach($validated['rooms'] as $roomData){
+            foreach ($validated['rooms'] as $roomData) {
                 $isBooked = Reservation_rooms::where('room_id', $roomData['room_id'])
-                ->whereHas('reservation', function($query) use ($validated) {
-                    $query->whereIn('status', ['confirmed', 'checked_in'])
-                    ->where('check_in_date', '<', $validated['check_out_date'])
-                    ->where('check_out_date', '>', $validated['check_in_date']);
-                })
+                    ->whereHas('reservation', function ($query) use ($validated) {
+                        $query->whereIn('status', ['confirmed', 'checked_in'])
+                            ->where('check_in_date', '<', $validated['check_out_date'])
+                            ->where('check_out_date', '>', $validated['check_in_date']);
+                    })
 
-                ->exists();
+                    ->exists();
 
-                if($isBooked){
+                if ($isBooked) {
                     $room = Rooms::find($roomData['room_id']);
 
                     return response()->json([
@@ -139,7 +139,7 @@ class ReservationController extends Controller
             do {
                 $reservationCode = 'RES-' . strtoupper(Str::random(6));
             } while (Reservations::where('reservation_code', $reservationCode)->exists());
-            
+
             // 5. Create Reservation Record
             $reservation = Reservations::create([
                 'guest_id'         => $guestId,
@@ -234,15 +234,42 @@ class ReservationController extends Controller
     public function settleAndCheck(Request $request, $reservationCode): JsonResponse
     {
         $request->validate([
-            'payment_method'                         => 'nullable|string|in:cash,bakong_khqr,credit_card',
+            'payment_method'                         => 'nullable|string|in:cash,bakong_khqr',
             'room_assignments'                       => 'required|array',
-            'room_assignments.*.reservation_room_id' => 'required|exists:reservation_rooms,id',
-            'room_assignments.*.room_id'             => 'required|exists:rooms,id',
+            'room_assignments.*.reservation_room_id' => 'required|distinct|exists:reservation_rooms,id',
+            'room_assignments.*.room_id' => 'required|distinct|exists:rooms,id',
         ]);
 
         return DB::transaction(function () use ($request, $reservationCode) {
-            $reservation = Reservations::where('reservation_code', $reservationCode)->firstOrFail();
+            $reservation = Reservations::where('reservation_code', $reservationCode)
+                ->lockForUpdate()
+                ->firstOrFail();
             $invoice = $reservation->invoice;
+
+            if ($reservation->status !== 'confirmed') {
+                return response()->json([
+                    'message' => 'Only confirmed reservations can be checked in.',
+                ], 422);
+            }
+
+            $reservedRoomIds = $reservation->reservationRooms()
+                ->where('status', 'reserved')
+                ->pluck('id')
+                ->sort()
+                ->values()
+                ->all();
+
+            $submittedRoomIds = collect($request->room_assignments)
+                ->pluck('reservation_room_id')
+                ->sort()
+                ->values()
+                ->all();
+
+            if ($reservedRoomIds !== $submittedRoomIds) {
+                return response()->json([
+                    'message' => 'Every reserved room must be assigned exactly once before check-in.',
+                ], 422);
+            }
 
             $remainingBalance = $reservation->total_amount - $reservation->paid_amount;
 
@@ -268,20 +295,92 @@ class ReservationController extends Controller
 
             // Assign Physical Rooms & Check In
             foreach ($request->room_assignments as $assignment) {
-                Reservation_rooms::where('id', $assignment['reservation_room_id'])
-                    ->update([
-                        'room_id'         => $assignment['room_id'],
-                        'actual_check_in' => now(),
-                        'status'          => 'checked_in',
-                    ]);
+                $reservationRoom = $reservation->reservationRooms()
+                    ->whereKey($assignment['reservation_room_id'])
+                    ->where('status', 'reserved')
+                    ->firstOrFail();
 
-                Rooms::where('id', $assignment['room_id'])->update(['status' => 'occupied']);
+                $room = Rooms::whereKey($assignment['room_id'])
+                    ->where('status', 'available')
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $reservationRoom->update([
+                    'room_id' => $room->id,
+                    'actual_check_in' => now(),
+                    'status' => 'checked_in',
+                ]);
+
+                $room->update(['status' => 'occupied']);
             }
+
+
 
             $reservation->update(['status' => 'checked_in']);
 
             return response()->json([
                 'message' => 'Check-In complete and remaining balance settled. Final receipt ready.',
+                'receipt' => $invoice->load(['items', 'payments', 'guest']),
+            ]);
+        });
+    }
+
+    public function settleAndCheckOut(Request $request, $reservationCode): JsonResponse
+    {
+
+        return DB::transaction(function () use ($request, $reservationCode) {
+            $reservation = Reservations::where('reservation_code', $reservationCode)->firstOrFail();
+            $invoice = $reservation->invoice;
+
+            $remainingBalance = $reservation->total_amount - $reservation->paid_amount;
+
+            if ($reservation->status !== 'checked_in') {
+                return response()->json([
+                    'message' => 'Only checked-in reservations can be checked out.',
+                ], 422);
+            }
+            // Settle Balance
+            if ($remainingBalance > 0) {
+                Payments::create([
+                    'invoice_id'     => $invoice->id,
+                    'reservation_id' => $reservation->id,
+                    'payment_date'   => now(),
+                    'amount'         => $remainingBalance,
+                    'payment_method' => $request->payment_method ?? 'cash',
+                    'payment_type'   => 'remaining_balance',
+                    'status'         => 'completed',
+                ]);
+
+                $reservation->update([
+                    'paid_amount'    => $reservation->total_amount,
+                    'payment_status' => 'paid',
+                ]);
+
+                $invoice->update(['status' => 'paid']);
+            }
+
+            // Assign Physical Rooms & Check Out   
+
+            foreach (
+                $reservation->reservationRooms()
+                    ->where('status', 'checked_in')
+                    ->get() as $reservationRoom
+            ) {
+
+                $reservationRoom->update([
+                    'actual_check_out' => now(),
+                    'status' => 'checked_out',
+                ]);
+
+                $reservationRoom->room->update([
+                    'status' => 'cleaning',
+                ]);
+            }
+
+            $reservation->update(['status' => 'checked_out']);
+
+            return response()->json([
+                'message' => 'Check-out complete and remaining balance settled. Final receipt ready.',
                 'receipt' => $invoice->load(['items', 'payments', 'guest']),
             ]);
         });
