@@ -9,39 +9,40 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 
 class InvoiceController extends Controller
 {
-    
-    public function index(Request $request){
 
-    $query = Invoices::with(['reservation.guest', 'reservation.room']);
+    public function index(Request $request)
+    {
 
-    if($search = $request->input('search')){
-        $query->where(function ($q) use($search){
+        $query = Invoices::with(['reservation.guest', 'reservation.room']);
 
-            $q->where('invoice_number', 'LIKE', "%{$search}")
-            ->orWhereHas('reservation.guest', function($guestQuery) use ($search){
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
 
-                $guestQuery->where('name', 'LIKE', "%{$search}")
-                ->orWhere('email', 'LIKE', "%{$search}%");
+                $q->where('invoice_number', 'LIKE', "%{$search}")
+                    ->orWhereHas('reservation.guest', function ($guestQuery) use ($search) {
+
+                        $guestQuery->where('name', 'LIKE', "%{$search}")
+                            ->orWhere('email', 'LIKE', "%{$search}%");
+                    });
             });
-        });
-    }
+        }
 
-    if($status = $request->input('status')){
+        if ($status = $request->input('status')) {
 
-    $query->where('status', strtoupper($status));
-    }
+            $query->where('status', strtoupper($status));
+        }
 
-    $invoices = $query->orderBy('created_at', 'desc')->paginate(10);
+        $invoices = $query->orderBy('created_at', 'desc')->paginate(10);
 
 
-    $formattedData = $invoices->getCollection()->tranform(function ($invoices){
-        $reservation = $invoices->reservation;
+        $formattedData = $invoices->getCollection()->transform(function ($invoice) {
+            $reservation = $invoice->reservation;
             $guest = $reservation->guest ?? null;
             $room = $reservation->room ?? null;
 
             return [
-                'id'             => $invoices->id,
-                'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoices->id),
+                'id'             => $invoice->id,
+                'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoice->id),
                 'guest'          => [
                     'first_name'   => $guest->first_name ?? 'N/A',
                     'last_name' => $guest->last_name ?? 'N/A',
@@ -56,29 +57,31 @@ class InvoiceController extends Controller
                 'stay'           => [
                     'check_in'  => $reservation->check_in_date ?? null,
                     'check_out' => $reservation->check_out_date ?? null,
-                    'formatted' => ($reservation->check_in_date && $reservation->check_out_date) 
-                        ? "{$reservation->check_in_date} → {$reservation->check_out_date}" 
+                    'formatted' => ($reservation->check_in_date && $reservation->check_out_date)
+                        ? "{$reservation->check_in_date} → {$reservation->check_out_date}"
                         : 'N/A',
                 ],
-                'total_amount'   => (float) $invoices->total_amount,
-                'status'         => strtoupper($invoices->status), 
-                'date'           => $invoices->created_at->format('Y-m-d'),
+                'total_amount'   => (float) $invoice->total_amount,
+                'status'         => strtoupper($invoice->status),
+                'date'           => $invoice->created_at->format('Y-m-d'),
             ];
-    });
+        });
+        $invoices->setCollection($formattedData);
 
-    
+        return response()->json($invoices);
     }
 
-    public function show(string $id): JsonResponse {
+    public function show(string $id): JsonResponse
+    {
 
-    $invoice = Invoices::with([
-        'reservation.guest',
-        'reservation.room'
-    ])->findOrFail($id);
+        $invoice = Invoices::with([
+            'reservation.guest',
+            'reservation.room'
+        ])->findOrFail($id);
 
-    return response()->json([
-        'status' => 'success',
-       'data'   => [
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
                 'id'             => $invoice->id,
                 'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoice->id),
                 'status'         => strtoupper($invoice->status),
@@ -107,8 +110,6 @@ class InvoiceController extends Controller
                 ],
                 'payments'       => $invoice->payments,
             ],
-    ]);
-
-    
+        ]);
     }
 }
