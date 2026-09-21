@@ -12,7 +12,6 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 
 import CheckIn from './pages/checkin/CheckIn'
 import CheckOut from './pages/checkout/CheckOut'
-import Housekeeping from './pages/housekeeping/Housekeeping'
 
 import Guests from './pages/guests/Guests'
 import AddGuest from './pages/guests/AddGuest'
@@ -30,6 +29,7 @@ import ChangePassword from './pages/ChangePassword'
 import AddReservation from './pages/reservations/AddReservation'
 import BookingSuccess from './pages/booking/BookingSuccess'
 import Invoices from './pages/invoices/Invoices'
+import Housekeeping from './pages/housekeeping/Housekeeping'
 
 import { setToken } from './api/client'
 import { useAuth } from './hooks/useAuth'
