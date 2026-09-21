@@ -385,4 +385,71 @@ class ReservationController extends Controller
             ]);
         });
     }
+
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $reservation = Reservations::findOrFail($id);
+
+        // 1. Prevent editing completed or cancelled bookings
+        if (in_array($reservation->status, ['checked_out', 'cancelled'])) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Cannot modify a completed or cancelled reservation.'
+            ], 422);
+        }
+
+        // 2. Validate input fields
+        $validated = $request->validate([
+            'guest_name'     => 'sometimes|string|max:255',
+            'guest_phone'    => 'sometimes|string|max:50',
+            'check_in_date'  => 'sometimes|date|after_or_equal:today',
+            'check_out_date' => 'sometimes|date|after:check_in_date',
+            'room_type_id'   => 'sometimes|exists:room_types,id',
+            'special_requests' => 'nullable|string',
+        ]);
+
+        // 3. Handle Date or Room Changes (Check Availability & Recalculate)
+        if ($request->hasAny(['check_in_date', 'check_out_date', 'room_type_id'])) {
+            // Optional: Run availability check logic here
+        }
+
+        // 4. Save updates
+        $reservation->update($validated);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Reservation updated successfully.',
+            'data'    => $reservation
+        ]);
+    }
+
+
+
+    public function destroy(string $id): JsonResponse
+    {
+        $reservation = Reservations::findOrFail($id);
+
+        // Prevent deletion/cancellation if guest is already checked in or checked out
+        if (in_array($reservation->status, ['checked_in', 'checked_out'])) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Cannot cancel a reservation that is currently checked in or completed.'
+            ], 400);
+        }
+
+        // Cancel reservation and release allocated room(s)
+        DB::transaction(function () use ($reservation) {
+            $reservation->update(['status' => 'cancelled']);
+
+            // Set room status back to available
+            if ($reservation->room_id) {
+                Rooms::where('id', $reservation->room_id)->update(['status' => 'available']);
+            }
+        });
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Reservation cancelled successfully.'
+        ]);
+    }
 }
