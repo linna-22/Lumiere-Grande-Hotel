@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('housekeeping_tasks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('room_id')->constrained('rooms')->cascadeOnDelete();
-            $table->foreignId('assigend_to')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
             $table->string('task_type');
             $table->string('status')->default('pending');
             $table->text('notes')->nullable();
