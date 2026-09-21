@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import ForgotPassword from "./Forgotpassword";
 
 function GoogleIcon(props) {
   return (
@@ -39,7 +40,6 @@ function GitHubIcon(props) {
 }
 
 export default function Login({ onNavigate, auth }) {
-
   const { login } = auth;
   const [form, setForm] = useState({
     email: "",
@@ -207,9 +207,7 @@ export default function Login({ onNavigate, auth }) {
                   required
                   autoComplete="email"
                   className={`w-full bg-base-850 border rounded-lg pl-10 pr-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 ${
-                    errors.email
-                      ? "border-rose-500"
-                      : "border-base-border"
+                    errors.email ? "border-rose-500" : "border-base-border"
                   }`}
                 />
               </div>
@@ -243,9 +241,7 @@ export default function Login({ onNavigate, auth }) {
                   required
                   autoComplete="current-password"
                   className={`w-full bg-base-850 border rounded-lg pl-10 pr-10 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 ${
-                    errors.password
-                      ? "border-rose-500"
-                      : "border-base-border"
+                    errors.password ? "border-rose-500" : "border-base-border"
                   }`}
                 />
 
@@ -254,11 +250,20 @@ export default function Login({ onNavigate, auth }) {
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                 >
-                  {showPassword ? (
-                    <EyeOff size={16} />
-                  ) : (
-                    <Eye size={16} />
-                  )}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm text-slate-400"></label>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onNavigate?.("ForgotPassword", { email: form.email })
+                  }
+                  className="text-sm text-amber-400 hover:text-amber-300 transition-colors hover:underline"
+                >
+                  Forgot password?
                 </button>
               </div>
 
@@ -269,7 +274,7 @@ export default function Login({ onNavigate, auth }) {
                 </p>
               )}
             </div>
-             {/* General error */}
+            {/* General error */}
             {errors.general && (
               <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
                 {errors.general[0]}
@@ -291,8 +296,6 @@ export default function Login({ onNavigate, auth }) {
                 "Sign In"
               )}
             </button>
-
-           
           </form>
         </div>
       </div>

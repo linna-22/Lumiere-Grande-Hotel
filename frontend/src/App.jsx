@@ -8,6 +8,7 @@ import RoomTypes from './pages/roomtypes/roomtypes'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import VerifyOtp from './pages/auth/VerifyOtp'
+import ForgotPassword from './pages/auth/ForgotPassword'
 
 import CheckIn from './pages/checkin/CheckIn'
 import CheckOut from './pages/checkout/CheckOut'
@@ -30,7 +31,6 @@ import AddReservation from './pages/reservations/AddReservation'
 import BookingSuccess from './pages/booking/BookingSuccess'
 import Invoices from './pages/invoices/Invoices'
 
-
 import { setToken } from './api/client'
 import { useAuth } from './hooks/useAuth'
 
@@ -51,6 +51,7 @@ const pages = {
   Login,
   Register,
   VerifyOtp,
+  ForgotPassword,
 
   'Check In': CheckIn,
   'Check Out': CheckOut,
@@ -68,6 +69,11 @@ const pages = {
 
   'Booking Success': BookingSuccess,
 }
+
+/**
+ * Pages that can be opened WITHOUT being logged in.
+ */
+const PUBLIC_PAGES = ['Login', 'Register', 'VerifyOtp', 'ForgotPassword']
 
 /**
  * Check for OAuth callback.
@@ -130,14 +136,10 @@ export default function App() {
     if (user) {
       /**
        * Only automatically redirect to Dashboard when
-       * the application is currently on the Login page.
+       * the application is currently on a public auth page.
        */
       setPage((currentPage) => {
-        if (
-          currentPage === 'Login' ||
-          currentPage === 'Register' ||
-          currentPage === 'VerifyOtp'
-        ) {
+        if (PUBLIC_PAGES.includes(currentPage)) {
           return 'Dashboard'
         }
 
@@ -146,14 +148,17 @@ export default function App() {
     } else {
       /**
        * No valid session.
+       * Keep the user on a public page (e.g. ForgotPassword)
+       * instead of forcing them back to Login.
        */
-      setPage('Login')
-      setNavigationData({})
+      setPage((currentPage) =>
+        PUBLIC_PAGES.includes(currentPage) ? currentPage : 'Login'
+      )
     }
   }, [user, loading])
 
   /**
-   * Navigation between dashboard pages.
+   * Navigation between pages.
    */
   const handleNavigate = (label, data = {}) => {
     if (pages[label]) {
@@ -198,7 +203,7 @@ export default function App() {
    * Never allow protected pages to render without
    * an authenticated user.
    */
-  if (!user && page !== 'Login' && page !== 'Register' && page !== 'VerifyOtp') {
+  if (!user && !PUBLIC_PAGES.includes(page)) {
     return <Login auth={auth} onNavigate={handleNavigate} />
   }
 
