@@ -178,7 +178,7 @@ export default function App() {
       <div
         className="min-h-screen flex items-center justify-center"
         style={{
-          backgroundColor: '#f7f3ec',
+          backgroundColor: '#0d192d',
           color: '#1f2942',
         }}
       >
