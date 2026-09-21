@@ -1,203 +1,174 @@
-import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, X } from 'lucide-react'
+import useLookups from './Uselookups'
+import { getErrorMessage } from './Housekeepingutils'
 
-const ROOM_TYPES = ['Standard', 'Deluxe', 'Suite', 'Executive', 'Presidential Suite']
-const TASK_TYPES = ['Daily Cleaning', 'Checkout Clean', 'Turn Down', 'Deep Clean', 'Inspection']
-const PRIORITIES = ['Normal', 'High', 'Urgent']
-const STATUSES = ['Pending', 'In Progress', 'Completed', 'Inspected']
+const TASK_TYPES = [
+  'Daily Cleaning',
+  'Checkout Clean',
+  'Deep Clean',
+  'Turn Down',
+  'Inspection',
+]
 
-const emptyForm = {
-  room: '',
-  floor: '',
-  roomType: 'Standard',
-  taskType: 'Daily Cleaning',
-  assignedTo: '',
-  priority: 'Normal',
-  status: 'Pending',
-  notes: '',
-}
+const fieldClass =
+  'w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-400'
 
-export default function TaskFormModal({ task, onClose, onSubmit }) {
-  const isEditMode = Boolean(task)
-  const [form, setForm] = useState(emptyForm)
+/**
+ * Creates a new housekeeping task.
+ * Backend fields: room_id (required), task_type (required),
+ * assigned_to (optional), notes (optional).
+ */
+export default function TaskFormModal({ onClose, onSubmit }) {
+  const { rooms, staff, loading, error: lookupError } = useLookups()
 
-  useEffect(() => {
-    if (task) {
-      setForm({
-        room: task.room ?? '',
-        floor: task.floor ?? '',
-        roomType: task.roomType ?? 'Standard',
-        taskType: task.task ?? 'Daily Cleaning',
-        assignedTo: task.assignedTo ?? '',
-        priority: task.priority ?? 'Normal',
-        status: task.status ?? 'Pending',
-        notes: task.notes ?? '',
-      })
-    } else {
-      setForm(emptyForm)
+  const [form, setForm] = useState({
+    room_id: '',
+    task_type: '',
+    assigned_to: '',
+    notes: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  function update(key) {
+    return (e) => {
+      setForm((f) => ({ ...f, [key]: e.target.value }))
+      setError('')
     }
-  }, [task])
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    // TODO: POST /api/housekeeping-tasks or PUT /api/housekeeping-tasks/{id}
-    onSubmit?.(form)
-    onClose()
+    setSubmitting(true)
+    setError('')
+
+    try {
+      await onSubmit({
+        room_id: Number(form.room_id),
+        task_type: form.task_type.trim(),
+        assigned_to: form.assigned_to ? Number(form.assigned_to) : null,
+        notes: form.notes.trim() || null,
+      })
+      onClose()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-      <div className="bg-base-900 border border-base-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-base-border">
-          <h2 className="text-white font-serif text-xl font-bold">
-            {isEditMode ? 'Edit Task' : 'New Housekeeping Task'}
-          </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <X size={20} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md bg-base-850 border border-base-border rounded-xl shadow-xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-base-border">
+          <h3 className="text-lg font-semibold text-white font-serif">
+            New Task
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-200"
+            aria-label="Close"
+          >
+            <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">
-                Room Number <span className="text-amber-400">*</span>
-              </label>
-              <input
-                type="text"
-                name="room"
-                value={form.room}
-                onChange={handleChange}
-                placeholder="e.g. 201"
-                required
-                className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
-              />
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {(error || lookupError) && (
+            <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
+              {error || lookupError}
             </div>
+          )}
 
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Floor</label>
-              <input
-                type="number"
-                name="floor"
-                value={form.floor}
-                onChange={handleChange}
-                placeholder="1"
-                className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Room Type</label>
-              <select
-                name="roomType"
-                value={form.roomType}
-                onChange={handleChange}
-                className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
-              >
-                {ROOM_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Task Type</label>
-              <select
-                name="taskType"
-                value={form.taskType}
-                onChange={handleChange}
-                className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
-              >
-                {TASK_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">
-                Assigned To <span className="text-amber-400">*</span>
-              </label>
-              <input
-                type="text"
-                name="assignedTo"
-                value={form.assignedTo}
-                onChange={handleChange}
-                placeholder="Staff member name"
-                required
-                className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Priority</label>
-              <select
-                name="priority"
-                value={form.priority}
-                onChange={handleChange}
-                className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
-              >
-                {PRIORITIES.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {isEditMode && (
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Status</label>
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                  className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+          <div>
+            <label className="text-sm text-slate-400 mb-1.5 block">Room</label>
+            <select
+              value={form.room_id}
+              onChange={update('room_id')}
+              required
+              disabled={loading}
+              className={fieldClass}
+            >
+              <option value="">
+                {loading ? 'Loading rooms…' : 'Select a room'}
+              </option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  Room {r.room_number}
+                  {r.floor != null ? ` · Floor ${r.floor}` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <label className="text-sm text-slate-400 mb-1.5 block">Notes</label>
+            <label className="text-sm text-slate-400 mb-1.5 block">
+              Task type
+            </label>
+            <input
+              type="text"
+              list="housekeeping-task-types"
+              value={form.task_type}
+              onChange={update('task_type')}
+              placeholder="e.g. Daily Cleaning"
+              required
+              className={fieldClass}
+            />
+            <datalist id="housekeeping-task-types">
+              {TASK_TYPES.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-400 mb-1.5 block">
+              Assign to <span className="text-slate-600">(optional)</span>
+            </label>
+            <select
+              value={form.assigned_to}
+              onChange={update('assigned_to')}
+              disabled={loading}
+              className={fieldClass}
+            >
+              <option value="">Unassigned</option>
+              {staff.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-400 mb-1.5 block">
+              Notes <span className="text-slate-600">(optional)</span>
+            </label>
             <textarea
-              name="notes"
-              value={form.notes}
-              onChange={handleChange}
-              placeholder="Additional notes..."
               rows={3}
-              className="w-full bg-base-850 border border-base-border rounded-lg px-3.5 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 resize-none"
+              value={form.notes}
+              onChange={update('notes')}
+              className={fieldClass}
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 font-medium px-5 py-2.5 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-base-800 border border-base-border text-slate-200 hover:bg-base-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold px-5 py-2.5 rounded-lg transition-colors"
+              disabled={submitting || loading}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-amber-400 hover:bg-amber-500 disabled:opacity-60 text-base-950 transition-colors"
             >
-              {isEditMode ? 'Save Changes' : 'Create Task'}
+              {submitting && <Loader2 size={14} className="animate-spin" />}
+              Create task
             </button>
           </div>
         </form>
