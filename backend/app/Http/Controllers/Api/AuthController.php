@@ -20,20 +20,20 @@ class AuthController extends Controller
 {
     //
 
-    private function ensureGuestProfileExists(User $user): void {
+    private function ensureGuestProfileExists(User $user): void
+    {
 
-    if($user->role === 'customer' && !$user->guest){
+        if ($user->role === 'customer' && !$user->guest) {
 
-    $nameParts = explode(' ', $user->name, 2);
+            $nameParts = explode(' ', $user->name, 2);
 
-    Guests::create([
-        'user_id' => $user->id,
-        'first_name' => $nameParts[0] ?? $user->name,
-        'last_name'  => $nameParts[1] ?? '',
-        'phone'      => $user->phone ?? null,
-    ]);
-
-    }
+            Guests::create([
+                'user_id' => $user->id,
+                'first_name' => $nameParts[0] ?? $user->name,
+                'last_name'  => $nameParts[1] ?? '',
+                'phone'      => $user->phone ?? null,
+            ]);
+        }
     }
 
     public function register(Request $request)
@@ -50,11 +50,11 @@ class AuthController extends Controller
                     'confirmed',
                     Password::min(8)->letters()->numbers()->symbols()
                 ],
-                
+
             ]);
 
             $users = User::create([
-                
+
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
@@ -89,7 +89,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         // 1. Throttle requests by IP + email to prevent brute-force attacks
-        $throttleKey = Str::transliterate(Str::lower($request->input('email')).'|'.$request->ip());
+        $throttleKey = Str::transliterate(Str::lower($request->input('email')) . '|' . $request->ip());
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
@@ -135,8 +135,10 @@ class AuthController extends Controller
             $otpCode = random_int(100000, 999999);
 
             // Store hashed/plain OTP code in Cache (3 minutes)
-            Cache::put("otp_{$user->id}", $otpCode, now()->addMinutes(3));
+            $email = strtolower($user->email);
 
+            Cache::put("otp_{$email}", $otpCode, now()->addMinutes(3));
+            Cache::forget("otp_attempts_{$email}");
             // Queue mail sending so API response is fast
             Mail::to($user->email)->queue(new SendOtpMail($otpCode, 'login'));
 
@@ -217,17 +219,16 @@ class AuthController extends Controller
 
         $users = User::where('email', $email)->firstOrFail();
 
-        if($users->role === 'customer' && !$users->guest){
+        if ($users->role === 'customer' && !$users->guest) {
 
-        $nameParts = explode('', $users->name, 2);
+           $nameParts = explode(' ', $users->name, 2);
 
-        Guests::create([
-            'user_id' => $users->id,
-            'first_name' => $nameParts[0] ?? $users->name,
-            'last_name' => $nameParts[1] ?? '',
-            'phone' => $users->phone ?? null
-        ]);
-
+            Guests::create([
+                'user_id' => $users->id,
+                'first_name' => $nameParts[0] ?? $users->name,
+                'last_name' => $nameParts[1] ?? '',
+                'phone' => $users->phone ?? null
+            ]);
         }
 
         $users->tokens()->delete();
