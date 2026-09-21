@@ -12,7 +12,7 @@ export default function SuccessModal({ message, onClose }) {
         <p className="text-sm text-slate-400 mb-6">{message}</p>
         <button
           onClick={onClose}
-          className="w-full bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold px-5 py-2.5 rounded-lg transition-colors"
+          className="w-full bg-green-400 hover:bg-green-500 text-base-950 font-semibold px-5 py-2.5 rounded-lg transition-colors"
         >
           OK
         </button>

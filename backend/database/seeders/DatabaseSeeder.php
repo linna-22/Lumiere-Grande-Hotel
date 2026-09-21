@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoomTypeSeeder::class,
             RoomSeeder::class,
-            // Add any other seeders you have here (e.g., UserSeeder::class)
+            AdminSeeder::class
         ]);
     }
    
