@@ -5,7 +5,7 @@ composer require laravel/reverb:@beta
 php artisan reverb:install
 
 
-<!-- ===============Notification Handle -->
+<!-- ===============Notification Handle============= -->
 
 To handle real-time booking alerts on the dashboard, you do not need to create or poll any HTTP API endpoints. Instead, connect to our Laravel Reverb WebSocket server using Laravel Echo and listen on the public channel notifications for the .notification.alert event. When a guest submits a booking, Reverb will automatically push an event payload containing the notification type, message, and data (which includes reservation_id, guest_name, and amount) directly to your active WebSocket connection. Your component can simply consume this incoming payload to trigger an instant toast alert, play a chime sound, or update dashboard counters live without requiring a page refresh.
 
@@ -115,3 +115,145 @@ export default function Dashboard() {
     </div>
   );
 }
+
+<!-- ===========================HouseKeeping============================================== -->
+ * We intergrate it with WebSocket also
+📢 Housekeeping Module & Real-Time Sync Specification
+🎯 Overview
+The Housekeeping module manages room cleaning tasks after guest checkouts. When a supervisor approves a cleaned room, the room's status instantly transitions to available, triggering a WebSocket broadcast to update the front-desk UI without requiring a manual page refresh.
+
+1. Room & Task State Definitions
+Room Statuses (rooms.status)
+occupied: Guest is currently in the room.
+
+dirty: Guest checked out; room requires cleaning.
+
+available: Room is inspected, clean, and ready for new guest check-ins.
+
+Housekeeping Task Statuses (housekeeping_tasks.status)
+pending: Task created, waiting for staff assignment or cleanup.
+
+in_progress: Housekeeper is currently cleaning the room.
+
+completed: Housekeeper finished cleaning; waiting for supervisor inspection.
+
+inspected: Supervisor approved the cleanup. (Triggers room state to available).
+
+2. End-to-End Workflow
+[Guest Checkout] ──> Room: dirty | Task: pending
+                          │
+[Housekeeper Cleans] ──> Task: in_progress ──> Task: completed
+                          │
+[Supervisor Approves] ──> Task: inspected ──> Room: available
+                          │
+              ⚡ WEBSOCKET BROADCAST SENT
+                          │
+[Front-Desk UI] ──> Room card instantly updates to "available" (Green)
+
+
+* Guest Checkout: API sets room.status = "dirty" and auto-creates a housekeeping task with status = "pending".
+
+Cleaning Phase: Housekeeper updates task status to "in_progress", then "completed".
+
+Supervisor Approval: Supervisor hits the approve endpoint. The backend updates task status to "inspected", changes room status to available, and fires a WebSocket event.
+
+Real-Time Update: The front-desk application receives the WebSocket event and updates the room status in the UI immediately.
+
+3. API END POINT 
+
+GET /api/housekeeping/tasks — Fetch tasks list (supports query params: ?status=pending or ?assigned_to={userId}).
+
+POST /api/housekeeping/tasks — Create manual task (e.g., maintenance/deep clean).
+
+PATCH /api/housekeeping/tasks/{id}/assign — Assign task to housekeeper ({ "assigned_to": userId }).
+
+PATCH /api/housekeeping/tasks/{id}/status — Housekeeper updates status ({ "status": "in_progress" | "completed" }).
+
+POST /api/housekeeping/tasks/{id}/approve — Supervisor approves room (triggers WebSocket event).
+
+* You have to set up Laravel Echo 
+
+example logic 
+
+import Echo from 'laravel-echo';
+
+// Subscribe to public channel
+Echo.channel('rooms-board')
+    .listen('.room.updated', (event) => {
+        // event.room contains the updated Room object
+        const updatedRoom = event.room;
+
+        console.log(`Room ${updatedRoom.room_number} is now ${updatedRoom.status}`);
+
+        // Example: Update React/Vue state array
+        setRooms(prevRooms => 
+            prevRooms.map(room => 
+                room.id === updatedRoom.id ? updatedRoom : room
+            )
+        );
+    });
+
+    <!--=========================Check IN controller=================================== -->
+
+
+* Workflow Breakdown
+
+STEP 1: Guest Search or Walk-In
+  ├─ Existing Reservation ──> GET  /api/check-in/search?query={term}
+  └─ Walk-In Draft         ──> POST /api/check-in/walk-in
+
+STEP 2: Guest ID Verification
+  └─ POST /api/check-in/{id}/verify-guest (Updates name, nationality & photo)
+
+STEP 3: Room Assignment
+  └─ POST /api/check-in/{id}/assign-room (Locks room for reservation)
+
+STEP 4: Balance Settlement & Check-In
+  └─ POST /api/check-in/{id}/settle (Executes existing ReservationController logic)
+------------------------------------------------------------------------------------------------
+* Step-by-Step Breakdown
+STEP 1: Find Booking or Create Walk-In
+Goal: Identify which reservation we are working on.
+
+Flow:
+
+If the guest already booked online, search by name, phone, or code using GET /api/check-in/search.
+
+If the guest is a walk-in, submit their basic info to POST /api/check-in/walk-in.
+
+Output: You receive a reservation_id (e.g., 15), which you hold in frontend state for Steps 2, 3, and 4.
+
+STEP 2: Verify Guest Identity
+Goal: Collect mandatory guest details and identity documents upon arrival.
+
+Flow: Submit guest information (and optionally an ID/Passport photo scan) to POST /api/check-in/{reservation_id}/verify-guest.
+
+Output: Guest profile is updated in the database and linked to the reservation.
+
+STEP 3: Assign Room
+Goal: Assign a specific physical room number to the guest.
+
+Flow: Display available clean rooms in the selected category and send the chosen room ID to POST /api/check-in/{reservation_id}/assign-room.
+
+Output: The room is pre-assigned to this reservation.
+
+STEP 4: Settle Payment & Finalize Check-In
+Goal: Collect remaining payment balance (if any) and finalize the check-in process.
+
+Flow:
+
+Check remaining balance.
+
+If balance > 0, collect payment via Cash or Bakong KHQR.
+
+Send payment details and confirmation to POST /api/check-in/{reservation_id}/settle.
+
+Output:
+
+Reservation status changes to checked_in.
+
+Room status changes to occupied.
+
+Invoice payment status is updated to paid.
+
+Check-in complete!

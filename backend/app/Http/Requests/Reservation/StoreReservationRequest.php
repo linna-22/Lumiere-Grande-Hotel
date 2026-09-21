@@ -46,7 +46,7 @@ class StoreReservationRequest extends FormRequest
             'tax' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
             'payment_option' => 'nullable|string|in:deposit,full',
-            'payment_method' => 'required_with:payment_option|string|in:bakong_khqr,credit_card,stripe',
+            'payment_method' => 'required_with:payment_option|string|in:bakong_khqr,cash',
         ];
     }
 }

@@ -18,15 +18,20 @@ class Housekeeping_tasks extends Model
         'notes'
     ];
 
-    public function room(): BelongsTo {
+    public function room(): BelongsTo
+    {
 
-    return $this->belongsTo(Rooms::class);
-
+        return $this->belongsTo(Rooms::class);
     }
 
-    public function houseKeeper(): BelongsTo {
+    public function houseKeeper(): BelongsTo
+    {
 
-    return $this->belongsTo(User::class, 'assigned_to');
-    
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }
