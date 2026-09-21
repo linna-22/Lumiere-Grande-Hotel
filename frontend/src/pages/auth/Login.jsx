@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-import ForgotPassword from "./Forgotpassword";
+import { useEffect, useState } from "react";
+import { Mail, Lock, Eye, EyeOff, Loader2, Clock } from "lucide-react";
 
 function GoogleIcon(props) {
   return (
@@ -39,6 +38,21 @@ function GitHubIcon(props) {
   );
 }
 
+// 75 -> "1:15", 9 -> "0:09"
+function formatTime(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = String(totalSeconds % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+// Backend message: "Too many login attempts. Please try again in {n} seconds."
+// It has no separate "seconds" field, so we read the number from the message.
+function parseRetrySeconds(err) {
+  const text = err?.data?.message || err?.message || "";
+  const match = String(text).match(/(\d+)\s*seconds?/i);
+  return match ? parseInt(match[1], 10) : 60; // backend decay is 60s
+}
+
 export default function Login({ onNavigate, auth }) {
   const { login } = auth;
   const [form, setForm] = useState({
@@ -49,6 +63,48 @@ export default function Login({ onNavigate, auth }) {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // --- Rate-limit lockout (backend locks per email + IP) ---
+  const [lockUntil, setLockUntil] = useState(null); // timestamp in ms
+  const [lockedEmail, setLockedEmail] = useState("");
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  // Countdown. Uses the end timestamp so it stays accurate even if the
+  // browser slows timers in a background tab.
+  useEffect(() => {
+    if (!lockUntil) {
+      setSecondsLeft(0);
+      return;
+    }
+
+    function tick() {
+      const remaining = Math.max(
+        0,
+        Math.ceil((lockUntil - Date.now()) / 1000)
+      );
+      setSecondsLeft(remaining);
+
+      if (remaining === 0) {
+        setLockUntil(null);
+        setLockedEmail("");
+      }
+    }
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockUntil]);
+
+  // The backend key is email + IP, so a different email is NOT locked.
+  const isLocked =
+    secondsLeft > 0 && form.email.trim().toLowerCase() === lockedEmail;
+
+  function startLock(err) {
+    const seconds = parseRetrySeconds(err);
+    setLockedEmail(form.email.trim().toLowerCase());
+    setLockUntil(Date.now() + seconds * 1000);
+    setErrors({});
+  }
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -69,6 +125,9 @@ export default function Login({ onNavigate, auth }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    // Also blocks submitting with the Enter key while locked
+    if (isLocked) return;
+
     setSubmitting(true);
     setErrors({});
 
@@ -84,8 +143,13 @@ export default function Login({ onNavigate, auth }) {
         onNavigate?.("Dashboard");
       }
     } catch (err) {
+      // Too many attempts: lock the button and start the countdown
+      if (err.status === 429) {
+        startLock(err);
+      }
+
       // Laravel validation errors
-      if (err.status === 422 && err.data?.errors) {
+      else if (err.status === 422 && err.data?.errors) {
         setErrors(err.data.errors);
       }
 
@@ -253,9 +317,16 @@ export default function Login({ onNavigate, auth }) {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm text-slate-400"></label>
 
+              {/* Password error */}
+              {errors.password && (
+                <p className="mt-1.5 text-sm text-rose-400">
+                  {errors.password[0]}
+                </p>
+              )}
+
+              {/* Forgot password */}
+              <div className="flex justify-end mt-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -266,16 +337,29 @@ export default function Login({ onNavigate, auth }) {
                   Forgot password?
                 </button>
               </div>
-
-              {/* Password error */}
-              {errors.password && (
-                <p className="mt-1.5 text-sm text-rose-400">
-                  {errors.password[0]}
-                </p>
-              )}
             </div>
+
+            {/* Rate-limit lockout banner */}
+            {isLocked && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm rounded-lg px-4 py-3"
+              >
+                <Clock size={18} className="mt-0.5 shrink-0 text-red-500" />
+                <div>
+                  <p className="font-medium text-red-500">Too many login attempts</p>
+                  <p className="text-red-500">
+                    Please try again in{" "}
+                    <span className="font-semibold tabular-nums">
+                      {formatTime(secondsLeft)}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* General error */}
-            {errors.general && (
+            {errors.general && !isLocked && (
               <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
                 {errors.general[0]}
               </div>
@@ -284,13 +368,18 @@ export default function Login({ onNavigate, auth }) {
             {/* Sign In button */}
             <button
               type="submit"
-              disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-500 disabled:opacity-60 text-base-950 font-semibold py-2.5 rounded-lg transition-colors"
+              disabled={submitting || isLocked}
+              className="w-full flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-500 disabled:opacity-60 disabled:cursor-not-allowed text-red-500 font-semibold py-2.5 rounded-lg transition-colors"
             >
               {submitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   Signing in...
+                </>
+              ) : isLocked ? (
+                <>
+                  <Clock size={16} />
+                  Try again in {formatTime(secondsLeft)}
                 </>
               ) : (
                 "Sign In"
