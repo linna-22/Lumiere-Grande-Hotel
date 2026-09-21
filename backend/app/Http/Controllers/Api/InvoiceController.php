@@ -43,7 +43,8 @@ class InvoiceController extends Controller
                 'id'             => $invoices->id,
                 'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoices->id),
                 'guest'          => [
-                    'name'   => $guest->name ?? 'N/A',
+                    'first_name'   => $guest->first_name ?? 'N/A',
+                    'last_name' => $guest->last_name ?? 'N/A',
                     'email'  => $guest->email ?? 'N/A',
                     'avatar' => $guest->avatar_url ?? null,
                 ],
@@ -83,7 +84,8 @@ class InvoiceController extends Controller
                 'status'         => strtoupper($invoice->status),
                 'created_at'     => $invoice->created_at->format('Y-m-d H:i'),
                 'guest'          => [
-                    'name'  => $invoice->reservation->guest->name ?? 'N/A',
+                    'first_name'   => $guest->first_name ?? 'N/A',
+                    'last_name' => $guest->last_name ?? 'N/A',
                     'email' => $invoice->reservation->guest->email ?? 'N/A',
                     'phone' => $invoice->reservation->guest->phone ?? 'N/A',
                 ],
