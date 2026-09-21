@@ -124,26 +124,26 @@ class ReservationController extends Controller
 
             // 5. Create Reservation Record
             $reservation = Reservations::create([
-                'guest_id'         => $guestId,
+                'guest_id' => $guestId,
                 'reservation_code' => $reservationCode,
-                'check_in_date'    => $validated['check_in_date'],
-                'check_out_date'   => $validated['check_out_date'],
-                'adults'           => $validated['adults'],
-                'children'         => $validated['children'] ?? 0,
-                'total_amount'     => $totalAmount,
-                'paid_amount'      => $paidAmount,
-                'payment_status'   => $paymentStatus,
-                'status'           => 'confirmed',
-                'created_by'       => auth()->id() ?? null,
+                'check_in_date' => $validated['check_in_date'],
+                'check_out_date' => $validated['check_out_date'],
+                'adults' => $validated['adults'],
+                'children' => $validated['children'] ?? 0,
+                'total_amount' => $totalAmount,
+                'paid_amount' => $paidAmount,
+                'payment_status' => $paymentStatus,
+                'status' => 'confirmed',
+                'created_by' => auth()->id() ?? null,
             ]);
 
             // 6. Attach Reserved Rooms
             foreach ($validated['rooms'] as $roomData) {
                 $reservation->reservationRooms()->create([
                     'room_type_id' => $roomData['room_type_id'],
-                    'room_id'      => null, // Assigned at check-in
+                    'room_id' => null, // Assigned at check-in
                     'nightly_rate' => $roomData['nightly_rate'],
-                    'status'       => 'reserved',
+                    'status' => 'reserved',
                 ]);
             }
 
@@ -151,45 +151,49 @@ class ReservationController extends Controller
 
             // 7. Create Invoice
             $invoice = Invoices::create([
-                'invoice_no'     => 'INV-' . strtoupper(Str::random(8)),
+                'invoice_no' => 'INV-' . strtoupper(Str::random(8)),
                 'reservation_id' => $reservation->id,
-                'guest_id'       => $guestId,
-                'invoice_date'   => now(),
-                'subtotal'       => $subtotal,
-                'tax'            => $tax,
-                'discount'       => $discount,
-                'total_amount'   => $totalAmount,
-                'status'         => $paymentStatus,
+                'guest_id' => $guestId,
+                'invoice_date' => now(),
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'discount' => $discount,
+                'total_amount' => $totalAmount,
+                'status' => $paymentStatus,
             ]);
 
             $invoice->items()->create([
-                'item_type'   => 'room_charge',
+                'item_type' => 'room_charge',
                 'description' => "Online Booking for {$nights} night(s)",
-                'quantity'    => $nights,
-                'unit_price'  => $nights > 0 ? ($subtotal / $nights) : $subtotal,
-                'amount'      => $subtotal,
+                'quantity' => $nights,
+                'unit_price' => $nights > 0 ? ($subtotal / $nights) : $subtotal,
+                'amount' => $subtotal,
             ]);
 
             // 8. Record Payment ONLY if Cash/Card (KHQR will be handled by PaymentController)
             if ($paidAmount > 0 && !$isKhqr) {
                 Payments::create([
-                    'invoice_id'     => $invoice->id,
+                    'invoice_id' => $invoice->id,
                     'reservation_id' => $reservation->id,
-                    'payment_date'   => now(),
-                    'amount'         => $paidAmount,
+                    'payment_date' => now(),
+                    'amount' => $paidAmount,
                     'payment_method' => $paymentMethod,
-                    'payment_type'   => $paymentOption === 'deposit' ? 'deposit' : 'full_payment',
-                    'status'         => 'completed',
+                    'payment_type' => $paymentOption === 'deposit' ? 'deposit' : 'full_payment',
+                    'status' => 'completed',
                 ]);
             }
 
             DB::afterCommit(function () use ($reservation) {
+                $guest = $reservation->guest;
+
                 broadcast(new NotificationAlert(
                     type: 'booking',
                     message: 'Have new booking coming',
                     data: [
                         'reservation_id' => $reservation->id,
-                        'guest_name' => $reservation->guest->name ?? 'Guest',
+                        'guest_name' => $guest
+                            ? trim($guest->first_name . ' ' . $guest->last_name)
+                            : 'Guest',
                         'amount' => $reservation->total_amount,
                     ],
                 ))->toOthers();
@@ -198,16 +202,16 @@ class ReservationController extends Controller
             return response()->json([
                 'message' => 'Reservation created successfully!',
                 'data' => [
-                    'reservation_id'    => $reservation->id,
-                    'reservation_code'  => $reservation->reservation_code,
-                    'status'            => $reservation->status,
-                    'payment_status'    => $reservation->payment_status,
-                    'total_amount'      => $reservation->total_amount,
-                    'paid_amount'       => $reservation->paid_amount,
+                    'reservation_id' => $reservation->id,
+                    'reservation_code' => $reservation->reservation_code,
+                    'status' => $reservation->status,
+                    'payment_status' => $reservation->payment_status,
+                    'total_amount' => $reservation->total_amount,
+                    'paid_amount' => $reservation->paid_amount,
                     'remaining_balance' => $reservation->total_amount - $reservation->paid_amount,
-                    'invoice_id'        => $invoice->id,
-                    'invoice_no'        => $invoice->invoice_no,
-                    'guest'             => $reservation->guest,
+                    'invoice_id' => $invoice->id,
+                    'invoice_no' => $invoice->invoice_no,
+                    'guest' => $reservation->guest,
                 ]
             ], 201);
         });
@@ -216,10 +220,10 @@ class ReservationController extends Controller
     public function settleAndCheck(Request $request, $reservationCode): JsonResponse
     {
         $request->validate([
-            'payment_method'                         => 'nullable|string|in:cash,bakong_khqr,credit_card',
-            'room_assignments'                       => 'required|array',
+            'payment_method' => 'nullable|string|in:cash,bakong_khqr,credit_card',
+            'room_assignments' => 'required|array',
             'room_assignments.*.reservation_room_id' => 'required|exists:reservation_rooms,id',
-            'room_assignments.*.room_id'             => 'required|exists:rooms,id',
+            'room_assignments.*.room_id' => 'required|exists:rooms,id',
         ]);
 
         return DB::transaction(function () use ($request, $reservationCode) {
@@ -231,17 +235,17 @@ class ReservationController extends Controller
             // Settle Balance
             if ($remainingBalance > 0) {
                 Payments::create([
-                    'invoice_id'     => $invoice->id,
+                    'invoice_id' => $invoice->id,
                     'reservation_id' => $reservation->id,
-                    'payment_date'   => now(),
-                    'amount'         => $remainingBalance,
+                    'payment_date' => now(),
+                    'amount' => $remainingBalance,
                     'payment_method' => $request->payment_method ?? 'cash',
-                    'payment_type'   => 'remaining_balance',
-                    'status'         => 'completed',
+                    'payment_type' => 'remaining_balance',
+                    'status' => 'completed',
                 ]);
 
                 $reservation->update([
-                    'paid_amount'    => $reservation->total_amount,
+                    'paid_amount' => $reservation->total_amount,
                     'payment_status' => 'paid',
                 ]);
 
@@ -252,9 +256,9 @@ class ReservationController extends Controller
             foreach ($request->room_assignments as $assignment) {
                 Reservation_rooms::where('id', $assignment['reservation_room_id'])
                     ->update([
-                        'room_id'         => $assignment['room_id'],
+                        'room_id' => $assignment['room_id'],
                         'actual_check_in' => now(),
-                        'status'          => 'checked_in',
+                        'status' => 'checked_in',
                     ]);
 
                 Rooms::where('id', $assignment['room_id'])->update(['status' => 'occupied']);

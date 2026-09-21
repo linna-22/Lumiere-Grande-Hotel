@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { WalletCards, Banknote, AlertCircle } from "lucide-react";
+import CashPayment from "./CashPayment";
 
 export default function PaymentStep({
   form,
@@ -13,7 +14,6 @@ export default function PaymentStep({
   const [loading, setLoading] = useState(false);
   const [payment, setPayment] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [cashDetailsOpen, setCashDetailsOpen] = useState(false);
 
   //Payment step
   const API_BASE_URL = (import.meta.env.VITE_API_URL || "/api").replace(
@@ -145,15 +145,9 @@ export default function PaymentStep({
       setError("Please select a payment method.");
       return;
     }
-    if (form.payment_method === "cash") {
-      const cashReceived = Number(form.cash_received || 0);
 
-      if (cashReceived < amountToPay) {
-        setError(`Cash received must be at least $${amountToPay.toFixed(2)}.`);
-        setCashDetailsOpen(true);
-        return;
-      }
-    }
+    // Cash is completed inside <CashPayment />, never from here.
+    if (form.payment_method === "cash") return;
 
     setError("");
 
@@ -162,9 +156,25 @@ export default function PaymentStep({
       return;
     }
 
-    // Credit Card / Stripe are not handled by the KHQR API yet.
     onContinue?.();
   };
+  const handleCashSuccess = (data) => {
+  const completedPayment = {
+    payment_id: data.payment_id,
+    method: "cash",
+    status: "completed",
+    paid: true,
+    summary: data.summary,
+  };
+
+  onContinue?.(completedPayment);
+
+  onNavigate?.("Booking Success", {
+    reservationId: form.reservation_id,
+    amount: amountToPay,
+    payment: completedPayment,
+  });
+};
 
   /**
    * Poll Bakong verification every 3 seconds.
@@ -448,10 +458,7 @@ export default function PaymentStep({
           {/* Cash */}
           <button
             type="button"
-            onClick={() => {
-              handlePaymentMethodChange("cash");
-              setCashDetailsOpen(true);
-            }}
+            onClick={() => handlePaymentMethodChange("cash")}
             className={`flex items-center gap-3 rounded-xl border p-4 transition-all ${
               form.payment_method === "cash"
                 ? "border-amber-400/70 bg-amber-400/5"
@@ -473,147 +480,70 @@ export default function PaymentStep({
       </div>
       {/* Cash Payment Details */}
       {form.payment_method === "cash" && (
-        <div className="mt-4 rounded-xl border border-amber-400/30 bg-base-800 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setCashDetailsOpen((prev) => !prev)}
-            className="w-full flex items-center justify-between p-4 text-left"
-          >
-            <div>
-              <p className="text-sm font-semibold text-white">
-                Cash Payment Details
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Enter the amount received from the customer
-              </p>
-            </div>
-
-            <span className="text-slate-400">
-              {cashDetailsOpen ? "▲" : "▼"}
-            </span>
-          </button>
-
-          {cashDetailsOpen && (
-            <div className="border-t border-base-border p-4 space-y-4">
-              {/* Amount to Pay */}
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">
-                  Amount to Pay
-                </label>
-
-                <div className="w-full rounded-lg border border-base-border bg-base-900 px-4 py-3 text-sm text-amber-400 font-semibold">
-                  ${amountToPay.toFixed(2)}
-                </div>
-              </div>
-
-              {/* Amount Received */}
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">
-                  Amount Received
-                </label>
-
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                    $
-                  </span>
-
-                  <input
-                    type="number"
-                    min={amountToPay}
-                    step="0.01"
-                    value={form.cash_received ?? ""}
-                    onChange={(e) => {
-                      const received = Number(e.target.value);
-
-                      onChange({
-                        cash_received: e.target.value,
-                        cash_change:
-                          received >= amountToPay
-                            ? Number((received - amountToPay).toFixed(2))
-                            : 0,
-                      });
-
-                      setError("");
-                    }}
-                    placeholder="Enter cash received"
-                    className="w-full rounded-lg border border-base-border bg-base-900 pl-8 pr-4 py-3 text-sm text-white outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              {/* Change */}
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">
-                  Change
-                </label>
-
-                <div className="w-full rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
-                  <span className="text-lg font-bold text-emerald-400">
-                    ${Number(form.cash_change || 0).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Warning */}
-              {form.cash_received &&
-                Number(form.cash_received) < amountToPay && (
-                  <p className="text-xs text-rose-400">
-                    Amount received must be at least ${amountToPay.toFixed(2)}.
-                  </p>
-                )}
-            </div>
-          )}
-        </div>
+        <CashPayment
+          apiBaseUrl={API_BASE_URL}
+          amountToPay={amountToPay}
+          reservationId={form.reservation_id}
+          invoiceId={form.invoice_id}
+          isFullPayment={paymentOption === "full"}
+          onBack={onBack}
+          onSuccess={handleCashSuccess}
+        />
       )}
 
-      {/* Payment Summary */}
-      <div className="bg-base-800 border border-amber-400/30 rounded-xl p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wide">
-              Amount to Pay
-            </p>
+      {form.payment_method !== "cash" && (
+        <>
+          {/* Payment Summary */}
+          <div className="bg-base-800 border border-amber-400/30 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Amount to Pay
+                </p>
 
-            <p className="text-2xl font-bold text-amber-400 mt-1">
-              ${amountToPay.toFixed(2)}
-            </p>
+                <p className="text-2xl font-bold text-amber-400 mt-1">
+                  ${amountToPay.toFixed(2)}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-slate-500">
+                  {paymentOption === "deposit" ? "50% deposit" : "Full payment"}
+                </p>
+
+                <p className="text-xs text-slate-500 mt-1">
+                  {form.payment_method === "bakong_khqr"
+                    ? "Bakong KHQR"
+                    : "Cash"}
+                </p>
+              </div>
+            </div>
           </div>
+          {/* Navigation */}
+          <div className="flex items-center justify-between pt-4 border-t border-base-border">
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-5 py-2.5 rounded-lg border border-base-border bg-base-800 hover:bg-base-700 text-slate-200 text-sm font-medium transition-colors"
+            >
+              Back
+            </button>
 
-          <div className="text-right">
-            <p className="text-xs text-slate-500">
-              {paymentOption === "deposit" ? "50% deposit" : "Full payment"}
-            </p>
-
-            <p className="text-xs text-slate-500 mt-1">
-              {form.payment_method === "bakong_khqr" ? "Bakong KHQR" : "Cash"}
-            </p>
+            <button
+              type="button"
+              onClick={handleContinue}
+              disabled={loading}
+              className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-base-950 font-semibold text-sm transition-colors"
+            >
+              {loading
+                ? "Generating KHQR..."
+                : form.payment_method === "bakong_khqr"
+                  ? "Generate KHQR"
+                  : "Add Reservation"}
+            </button>
           </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="flex items-center justify-between pt-4 border-t border-base-border">
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-5 py-2.5 rounded-lg border border-base-border bg-base-800 hover:bg-base-700 text-slate-200 text-sm font-medium transition-colors"
-        >
-          Back
-        </button>
-
-        <button
-          type="button"
-          onClick={handleContinue}
-          disabled={loading}
-          className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-base-950 font-semibold text-sm transition-colors"
-        >
-          {loading
-            ? "Generating KHQR..."
-            : form.payment_method === "bakong_khqr"
-              ? "Generate KHQR"
-              : "Add Reservation"}
-        </button>
-      </div>
+        </>
+      )}
 
       {/* KHQR Payment Modal */}
       {showQrModal && payment && (
