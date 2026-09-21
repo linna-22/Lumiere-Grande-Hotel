@@ -62,4 +62,8 @@ class Reservations extends Model
     {
         return $this->hasOne(Reviews::class);
     }
+    public function room()
+    {
+        return $this->belongsTo(Rooms::class, 'room_id');
+    }
 }

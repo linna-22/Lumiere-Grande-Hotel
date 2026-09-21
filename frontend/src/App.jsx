@@ -28,6 +28,8 @@ import ChangePassword from './pages/ChangePassword'
 
 import AddReservation from './pages/reservations/AddReservation'
 import BookingSuccess from './pages/booking/BookingSuccess'
+import Invoices from './pages/invoices/Invoices'
+
 
 import { setToken } from './api/client'
 import { useAuth } from './hooks/useAuth'
@@ -37,6 +39,7 @@ const pages = {
 
   Reservations,
   'Reservations Add': AddReservation,
+  Invoices,
 
   RoomTypes,
   Rooms,
