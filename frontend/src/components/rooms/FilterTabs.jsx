@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const tabs = ['All', 'Available', 'Occupied', 'Dirty', 'Maintenance']
+const tabs = ['All', 'Available', 'Occupied', 'Dirty', 'Maintenance', 'Reserved']
 
 export default function FilterTabs({ onChange }) {
   const [active, setActive] = useState('All')

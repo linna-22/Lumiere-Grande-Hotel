@@ -5,6 +5,7 @@ const statusStyles = {
   Occupied: "bg-sky-500/15 text-sky-400",
   Dirty: "bg-amber-500/15 text-amber-400",
   Maintenance: "bg-rose-500/15 text-rose-400",
+  Reserved: "bg-yellow-500/15 text-yellow-400",
 };
 
 function formatPrice(n) {
