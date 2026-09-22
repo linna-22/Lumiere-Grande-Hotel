@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Events\RoomStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Housekeeping_tasks;
+use App\Models\Rooms;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,14 +37,14 @@ class HouseKeepingController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-
-        $validated = $request->validate([
+ $validated = $request->validate([
             'room_id' => 'required|exists:rooms,id',
             'assigned_to' => 'nullable|exists:users,id',
             'task_type' => 'required|string',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string',
         ]);
 
+        // Create housekeeping task
         $task = Housekeeping_tasks::create([
             'room_id' => $validated['room_id'],
             'assigned_to' => $validated['assigned_to'] ?? null,
@@ -52,10 +53,21 @@ class HouseKeepingController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
+        // Get the room
+        $room = Rooms::findOrFail($validated['room_id']);
+
+        // change room status
+        $room->update([
+            'status' => 'dirty',
+        ]);
+
+        // broadcast room status update through Reverb
+        RoomStatusUpdated::dispatch($room);
+
         return response()->json([
             'status' => 'success',
             'message' => 'HouseKeeping task created',
-            'data' => $task->load('room')
+            'data' => $task->load('room'),
         ], 201);
     }
 

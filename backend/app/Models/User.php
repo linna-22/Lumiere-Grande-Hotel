@@ -62,4 +62,9 @@ class User extends Authenticatable
     return $this->hasMany(Housekeeping_tasks::class, 'assigned_to');
 
     }
+
+    public function employee(): HasOne {
+        
+        return $this->hasOne(Employee::class);
+    }
 }

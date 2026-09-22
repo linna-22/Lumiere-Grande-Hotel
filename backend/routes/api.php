@@ -196,10 +196,10 @@ Route::middleware(['auth:sanctum'])->prefix('check-out')->group(function () {
     
 
 
-    Route::get('/guests', [CheckOutController::class, 'getCheckedInGuests']);
+    Route::get('/guests', [CheckOutController::class, 'getCheckedInGuest']);
 
    
-    Route::get('/{reservationId}/billing', [CheckOutController::class, 'getBillingSummary']);
+    Route::get('/{reservationId}/billing', [CheckOutController::class, 'getBillSummary']);
 
     Route::post('/{reservationId}/complete', [CheckOutController::class, 'completeCheckOut']);
 
