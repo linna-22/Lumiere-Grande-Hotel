@@ -257,3 +257,55 @@ Room status changes to occupied.
 Invoice payment status is updated to paid.
 
 Check-in complete!
+
+---------------------------------------------------------------------------------------------------
+<!-- =========================CheckOutController================================-->
+
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                               FRONTEND CHECK-OUT FLOW                            │
+├───────────────────────────────┬─────────────────────────────────┬────────────────┤
+│ Step 1: Initial Page Load     │ Step 2: Select Guest            │ Step 3: Action  │
+│ Fetch active checked-in guests│ Fetch itemized bill & inspection│ Process check-out│
+└───────────────┬───────────────┴────────────────┬────────────────┴────────┬───────┘
+                │                                │                         │
+                ▼                                ▼                         ▼
+  GET /api/check-out/guests        GET /api/check-out/{id}/billing   POST /api/check-out/{id}/complete
+
+
+1️⃣ Step 1: Load Sidebar Guest Feed
+Trigger: When the user clicks on the Check Out navigation menu.
+
+API Endpoint: GET /api/check-out/guests
+
+Frontend Action:
+
+Render the left sidebar list displaying each guest's name, room number, room type, check-out date, and PAID / UNPAID badge.
+
+Store the list in state (guests).
+
+Auto-select the first guest in the list by default.
+
+-----------------------------------------------------------
+
+* Step 2: Fetch Guest Billing & Inspection Details
+Trigger: When staff clicks on any guest card in the sidebar.
+
+API Endpoint: GET /api/check-out/{reservationId}/billing
+
+Frontend Action:
+
+Update the active selected guest state (selectedReservationId).
+
+Render the Inspection Checklist (Bathroom, Bedroom, Mini Bar, Electronics, Furniture, Balcony).
+
+Render the Billing Summary table:
+Room Charges: (Nights $\times$ Nightly Rate)Extra Services: 
+Financial Totals: Subtotal, Discount (%), VAT (12%), and TOTAL DUE.
+
+
+-----------------------------------------------------------
+
+* Step 3: Complete Check-Out (Orange Button)
+Trigger: Clicking the Complete Check-out button.
+
+API Endpoint: POST /api/check-out/{reservationId}/complete

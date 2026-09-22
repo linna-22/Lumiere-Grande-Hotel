@@ -18,10 +18,11 @@ class InvoiceController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
 
-                $q->where('invoice_number', 'LIKE', "%{$search}")
+                $q->where('invoice_no', 'LIKE', "%{$search}%")
                     ->orWhereHas('reservation.guest', function ($guestQuery) use ($search) {
 
-                        $guestQuery->where('name', 'LIKE', "%{$search}")
+                        $guestQuery->where('first_name', 'LIKE', "%{$search}%")
+                            ->orWhere('last_name', 'LIKE', "%{$search}%")
                             ->orWhere('email', 'LIKE', "%{$search}%");
                     });
             });
@@ -42,7 +43,7 @@ class InvoiceController extends Controller
 
             return [
                 'id'             => $invoice->id,
-                'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoice->id),
+                'invoice_number' => $invoice->invoice_no ?? ('INV-' . $invoice->id),
                 'guest'          => [
                     'first_name'   => $guest->first_name ?? 'N/A',
                     'last_name' => $guest->last_name ?? 'N/A',
@@ -79,6 +80,10 @@ class InvoiceController extends Controller
             'reservation.reservationRooms.room'
         ])->findOrFail($id);
 
+        $reservation = $invoice->reservation;
+        $guest = $reservation?->guest;
+        $room = $reservation?->reservationRooms->first()?->room;
+
         return response()->json([
             'status' => 'success',
             'data'   => [
@@ -88,6 +93,7 @@ class InvoiceController extends Controller
                 'created_at'     => $invoice->created_at->format('Y-m-d H:i'),
                 'guest'          => [
                     'first_name'   => $guest->first_name ?? 'N/A',
+                    // 'name'  => trim(($guest->first_name ?? '') . ' ' . ($guest->last_name ?? '')) ?: 'N/A',
                     'last_name' => $guest->last_name ?? 'N/A',
                     'email' => $invoice->reservation->guest->email ?? 'N/A',
                     'phone' => $invoice->reservation->guest->phone ?? 'N/A',

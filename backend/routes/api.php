@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CheckInController;
+use App\Http\Controllers\Api\CheckOutController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
@@ -186,4 +187,18 @@ Route::prefix('check-in')->group(function () {
     
     Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
 });
+});
+
+
+Route::middleware(['auth:sanctum'])->prefix('check-out')->group(function () {
+    
+
+
+    Route::get('/guests', [CheckOutController::class, 'getCheckedInGuests']);
+
+   
+    Route::get('/{reservationId}/billing', [CheckOutController::class, 'getBillingSummary']);
+
+    Route::post('/{reservationId}/complete', [CheckOutController::class, 'completeCheckOut']);
+
 });
