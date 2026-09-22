@@ -2,13 +2,32 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\InvoiceExport;
 use App\Http\Controllers\Controller;
 use App\Models\Invoices;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Excel;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 class InvoiceController extends Controller
 {
+
+public function exportExcel(){
+
+    try {
+
+    $fileName = 'lumiere_hotel_invoices_' . now()->format('Y_m_d_His') . '.xlsx';
+
+    return Excel::download(new InvoiceExport, $fileName);
+
+    }catch(\Exception $e){
+        return response()->json([
+            'message' => 'Error' . $e,
+        ], 500);
+    }
+
+
+}
 
     public function index(Request $request)
     {

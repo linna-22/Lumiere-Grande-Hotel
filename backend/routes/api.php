@@ -157,6 +157,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/invoices', [InvoiceController::class, 'index']);
 
     Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
+    
+    Route::get('/invoices/export/excel', [RoomController::class, 'exportExcel'])->name('invoices.export.excel');
 
 });
 
@@ -202,3 +204,4 @@ Route::middleware(['auth:sanctum'])->prefix('check-out')->group(function () {
     Route::post('/{reservationId}/complete', [CheckOutController::class, 'completeCheckOut']);
 
 });
+

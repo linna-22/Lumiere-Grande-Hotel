@@ -210,7 +210,9 @@ STEP 3: Room Assignment
 
 STEP 4: Balance Settlement & Check-In
   └─ POST /api/check-in/{id}/settle (Executes existing ReservationController logic)
+
 ------------------------------------------------------------------------------------------------
+
 * Step-by-Step Breakdown
 STEP 1: Find Booking or Create Walk-In
 Goal: Identify which reservation we are working on.
