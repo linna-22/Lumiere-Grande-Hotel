@@ -311,3 +311,45 @@ Financial Totals: Subtotal, Discount (%), VAT (12%), and TOTAL DUE.
 Trigger: Clicking the Complete Check-out button.
 
 API Endpoint: POST /api/check-out/{reservationId}/complete
+
+------------------------------------------------------------------------
+
+<!-- =====================Setiing Hotel Info function============== -->
+
+Instead of hardcoding the hotel name, logo URL, contact details, or tax rates inside frontend components, all global configuration data is stored dynamically in the backend database.
+
+Public Users & Guests: Can fetch basic branding data (logo, hotel name, address) to display on the navbar, footer, public booking pages, and guest receipts.
+
+Admins & Management: Have privileged access to view, update, and manage all hotel configuration settings dynamically through the Admin Settings Dashboard.
+
+🌐 API Endpoints Reference
+1. Fetch Public Branding Info
+Endpoint: GET /api/public-settings
+
+Access: Public (No authentication or token required)
+
+Usage: Fetch on initial app load (e.g., in React/Vue App Context or Global State Provider) to dynamically set page titles, nav logos, contact footers, and invoices.
+
+2. Fetch All Admin Settings
+Endpoint: GET /api/admin/settings
+
+Access: Protected (Requires Bearer Token with Admin role)
+
+Usage: Used inside the Admin Settings page form inputs to populate current database configuration values.
+
+3. Update Admin Settings
+Endpoint: POST /api/admin/settings
+
+Access: Protected (Requires Bearer Token with Admin role)
+
+Usage: Submit text fields, numbers, or toggles updated by the admin.
+
+4. Upload Hotel Logo
+Endpoint: POST /api/admin/settings/logo
+
+Access: Protected (Requires Bearer Token with Admin role)
+
+Usage: Upload an image file for the hotel logo. Handles file storage on backend/Cloudinary and updates the logo setting automatically.
+
+For logo We are store on cloundinary with the same Room image
+

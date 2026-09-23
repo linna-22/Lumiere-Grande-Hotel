@@ -17,6 +17,8 @@ use App\Models\Guests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\SettingsController;
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes (No Authentication Required)
@@ -205,3 +207,11 @@ Route::middleware(['auth:sanctum'])->prefix('check-out')->group(function () {
 
 });
 
+Route::get('/public-settings', [SettingsController::class, 'getPublicInfo']);
+
+// 2. PROTECTED ADMIN ROUTES (Admin updates settings)
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/settings', [SettingsController::class, 'index']);
+    Route::post('/settings', [SettingsController::class, 'update']);
+    Route::post('/settings/logo', [SettingsController::class, 'uploadLogo']);
+});
