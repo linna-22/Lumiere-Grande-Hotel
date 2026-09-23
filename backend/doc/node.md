@@ -353,3 +353,5 @@ Usage: Upload an image file for the hotel logo. Handles file storage on backend/
 
 For logo We are store on cloundinary with the same Room image
 
+----------------------------------------------------------------------
+composer require irazasyed/telegram-bot-sdk

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\CheckInController;
 use App\Http\Controllers\Api\CheckOutController;
 use App\Http\Controllers\Api\RoomController;
@@ -214,4 +215,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/settings', [SettingsController::class, 'index']);
     Route::post('/settings', [SettingsController::class, 'update']);
     Route::post('/settings/logo', [SettingsController::class, 'uploadLogo']);
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/admin/backup-now', [BackupController::class, 'triggerBackup']);
 });

@@ -9,6 +9,7 @@
         "cloudinary-labs/cloudinary-laravel": "^2.3",
         "fidele007/bakong-khqr-php": "^1.2",
         "guzzlehttp/guzzle": "^7.2",
+        "irazasyed/telegram-bot-sdk": "^3.16",
         "laravel/framework": "^10.0",
         "laravel/reverb": "@beta",
         "laravel/sanctum": "^3.3",
