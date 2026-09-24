@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import UserAvatar from "../common/UserAvatar";
+import RealtimeNotifications from "../common/RealtimeNotifications";
 
 function formatRole(role) {
   if (!role) return "";
@@ -45,10 +46,7 @@ export default function TopBar({ onMenuClick, onNavigate }) {
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (
-        profileRef.current &&
-        !profileRef.current.contains(event.target)
-      ) {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
         setProfileMenuOpen(false);
       }
     }
@@ -56,10 +54,7 @@ export default function TopBar({ onMenuClick, onNavigate }) {
     document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -110,20 +105,13 @@ export default function TopBar({ onMenuClick, onNavigate }) {
           {/* Date + Weather */}
           <div className="hidden md:flex items-center gap-3 text-sm text-slate-300 shrink-0">
             {/* Today's date */}
-            <span className="font-medium whitespace-nowrap">
-              {today}
-            </span>
+            <span className="font-medium whitespace-nowrap">{today}</span>
 
             {/* Weather */}
             <div className="flex items-center gap-1.5 bg-base-800 px-3 py-1.5 rounded-2xl whitespace-nowrap">
-              <Cloud
-                size={15}
-                className="text-sky-400"
-              />
+              <Cloud size={15} className="text-sky-400" />
 
-              <span>
-                28°C - Phnom Penh
-              </span>
+              <span>28°C - Phnom Penh</span>
             </div>
           </div>
         </div>
@@ -132,15 +120,14 @@ export default function TopBar({ onMenuClick, onNavigate }) {
             RIGHT SIDE
         ======================================== */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div
-            className="relative"
-            ref={profileRef}
-          >
+          {/* Notification */}
+          <RealtimeNotifications onNavigate={onNavigate} />
+
+          {/* Profile */}
+          <div className="relative" ref={profileRef}>
             {/* Profile button */}
             <button
-              onClick={() =>
-                setProfileMenuOpen((value) => !value)
-              }
+              onClick={() => setProfileMenuOpen((value) => !value)}
               className="
                 flex
                 items-center
@@ -176,11 +163,7 @@ export default function TopBar({ onMenuClick, onNavigate }) {
                   hidden
                   xl:block
                   transition-transform
-                  ${
-                    profileMenuOpen
-                      ? "rotate-180"
-                      : ""
-                  }
+                  ${profileMenuOpen ? "rotate-180" : ""}
                 `}
               />
             </button>
@@ -289,9 +272,7 @@ export default function TopBar({ onMenuClick, onNavigate }) {
                 >
                   <LogOut size={15} />
 
-                  {loggingOut
-                    ? "Logging out..."
-                    : "Logout"}
+                  {loggingOut ? "Logging out..." : "Logout"}
                 </button>
               </div>
             )}
@@ -339,9 +320,7 @@ export default function TopBar({ onMenuClick, onNavigate }) {
             />
 
             <button
-              onClick={() =>
-                setMobileSearchOpen(false)
-              }
+              onClick={() => setMobileSearchOpen(false)}
               className="
                 absolute
                 right-2.5
@@ -374,21 +353,13 @@ export default function TopBar({ onMenuClick, onNavigate }) {
         "
       >
         {/* Today's date */}
-        <span className="whitespace-nowrap">
-          {today}
-        </span>
+        <span className="whitespace-nowrap">{today}</span>
 
-        <span className="text-slate-600">
-          •
-        </span>
+        <span className="text-slate-600">•</span>
 
         {/* Weather */}
         <span className="flex items-center gap-1 whitespace-nowrap">
-          <Cloud
-            size={12}
-            className="text-sky-400"
-          />
-
+          <Cloud size={12} className="text-sky-400" />
           28°C - Phnom Penh
         </span>
       </div>
