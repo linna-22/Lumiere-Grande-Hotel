@@ -15,6 +15,8 @@ import {
   Bed,
 } from 'lucide-react'
 
+import { useHotelSettings } from '../../context/HotelSettingsContext'
+
 const navGroups = [
   {
     label: 'Main',
@@ -51,6 +53,26 @@ export default function Sidebar({
 }) {
   const [collapsed, setCollapsed] = useState(false)
 
+  // ==========================================================
+  // GLOBAL HOTEL SETTINGS
+  // ==========================================================
+
+  const { settings } = useHotelSettings()
+
+  const hotelName =
+    settings?.hotel_name || 'Lumiere Grande Hotel'
+
+  const hotelLogo =
+    settings?.hotel_logo_url || ''
+
+  // First letter fallback if there is no logo
+  const hotelInitial =
+    hotelName?.charAt(0)?.toUpperCase() || 'L'
+
+  // ==========================================================
+  // NAVIGATION
+  // ==========================================================
+
   const handleNavigate = (label) => {
     onClose?.()
     onNavigate?.(label)
@@ -58,7 +80,10 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile / tablet overlay */}
+      {/* =====================================================
+          MOBILE / TABLET OVERLAY
+      ====================================================== */}
+
       <div
         onClick={onClose}
         className={`fixed inset-0 bg-[#050d1b]/70 z-30 lg:hidden transition-opacity ${
@@ -79,48 +104,117 @@ export default function Sidebar({
           lg:translate-x-0
         `}
       >
+
         {/* =====================================================
-            LOGO
+            LOGO / HOTEL BRANDING
         ====================================================== */}
+
         <div className="flex items-center justify-between gap-3 px-5 h-16 border-b border-base-border">
+
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-amber-400 flex items-center justify-center shrink-0">
-              <BedDouble
-                size={18}
-                className="text-base-950"
-                strokeWidth={2.5}
-              />
+
+            {/* ================================================
+                HOTEL LOGO
+            ================================================= */}
+
+            <div
+              className="
+                w-9
+                h-9
+                rounded-lg
+                bg-base-800
+                border
+                border-base-border
+                overflow-hidden
+                flex
+                items-center
+                justify-center
+                shrink-0
+              "
+            >
+              {hotelLogo ? (
+                <img
+                  src={hotelLogo}
+                  alt={hotelName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div
+                  className="
+                    w-full
+                    h-full
+                    flex
+                    items-center
+                    justify-center
+                    bg-amber-400
+                    text-base-950
+                    font-bold
+                    text-sm
+                  "
+                >
+                  {hotelInitial}
+                </div>
+              )}
             </div>
+
+            {/* ================================================
+                HOTEL NAME
+            ================================================= */}
 
             {!collapsed && (
               <div className="leading-tight min-w-0">
-                <p className="text-white font-bold text-[15px] tracking-tight truncate">
-                  LUMIÈRE GRAND
+
+                <p
+                  className="
+                    text-white
+                    font-bold
+                    text-[15px]
+                    tracking-tight
+                    truncate
+                    max-w-[175px]
+                  "
+                  title={hotelName}
+                >
+                  {hotelName}
                 </p>
 
                 <p className="text-amber-400 text-[11px] font-medium">
                   Hotel Management System
                 </p>
+
               </div>
             )}
           </div>
 
-          {/* Mobile close */}
+          {/* =================================================
+              MOBILE CLOSE
+          ================================================== */}
+
           <button
             onClick={onClose}
-            className="lg:hidden text-slate-400 hover:text-white p-1 shrink-0"
+            className="
+              lg:hidden
+              text-slate-400
+              hover:text-white
+              p-1
+              shrink-0
+            "
             aria-label="Close menu"
           >
             <X size={20} />
           </button>
+
         </div>
 
         {/* =====================================================
             NAVIGATION
         ====================================================== */}
+
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden">
+
           {navGroups.map((group) => (
             <div key={group.label}>
+
               {!collapsed && (
                 <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   {group.label}
@@ -128,92 +222,116 @@ export default function Sidebar({
               )}
 
               <div className="space-y-1">
-                {group.items.map(({ label, icon: Icon, badge }) => {
-                  const isActive = label === active
 
-                  return (
-                    <a
-                      key={label}
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleNavigate(label)
-                      }}
-                      title={collapsed ? label : undefined}
-                      className={`
-                        flex items-center gap-3
-                        px-3 py-2.5 rounded-lg
-                        text-sm font-medium
-                        transition-colors
+                {group.items.map(
+                  ({ label, icon: Icon, badge }) => {
+                    const isActive =
+                      label === active
 
-                        ${
-                          isActive
-                            ? 'bg-amber-400 text-base-950'
-                            : 'text-slate-400 hover:bg-base-800 hover:text-slate-200'
-                        }
-
-                        ${
+                    return (
+                      <a
+                        key={label}
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleNavigate(label)
+                        }}
+                        title={
                           collapsed
-                            ? 'justify-center'
-                            : 'justify-between'
+                            ? label
+                            : undefined
                         }
-                      `}
-                    >
-                      <span className="flex items-center gap-3 min-w-0">
-                        <Icon
-                          size={18}
-                          strokeWidth={2}
-                          className="shrink-0"
-                        />
+                        className={`
+                          flex items-center gap-3
+                          px-3 py-2.5 rounded-lg
+                          text-sm font-medium
+                          transition-colors
 
-                        {!collapsed && (
-                          <span className="truncate">
-                            {label}
-                          </span>
-                        )}
-                      </span>
+                          ${
+                            isActive
+                              ? 'bg-amber-400 text-base-950'
+                              : 'text-slate-400 hover:bg-base-800 hover:text-slate-200'
+                          }
 
-                      {!collapsed && badge !== undefined && (
-                        <span
-                          className={`
-                            text-[11px]
-                            font-semibold
-                            px-1.5
-                            min-w-[1.25rem]
-                            text-center
-                            py-0.5
-                            rounded-full
+                          ${
+                            collapsed
+                              ? 'justify-center'
+                              : 'justify-between'
+                          }
+                        `}
+                      >
 
-                            ${
-                              isActive
-                                ? 'bg-base-950/20 text-base-950'
-                                : 'bg-base-800 text-slate-300'
-                            }
-                          `}
-                        >
-                          {badge}
+                        <span className="flex items-center gap-3 min-w-0">
+
+                          <Icon
+                            size={18}
+                            strokeWidth={2}
+                            className="shrink-0"
+                          />
+
+                          {!collapsed && (
+                            <span className="truncate">
+                              {label}
+                            </span>
+                          )}
+
                         </span>
-                      )}
-                    </a>
-                  )
-                })}
+
+                        {!collapsed &&
+                          badge !== undefined && (
+                            <span
+                              className={`
+                                text-[11px]
+                                font-semibold
+                                px-1.5
+                                min-w-[1.25rem]
+                                text-center
+                                py-0.5
+                                rounded-full
+
+                                ${
+                                  isActive
+                                    ? 'bg-base-950/20 text-base-950'
+                                    : 'bg-base-800 text-slate-300'
+                                }
+                              `}
+                            >
+                              {badge}
+                            </span>
+                          )}
+
+                      </a>
+                    )
+                  }
+                )}
+
               </div>
             </div>
           ))}
+
         </nav>
 
         {/* =====================================================
             SETTINGS / LOGOUT
         ====================================================== */}
+
         <div className="px-3 py-4 border-t border-base-border space-y-1">
-          {/* Settings */}
+
+          {/* ==================================================
+              SETTINGS
+          =================================================== */}
+
           <a
             href="#"
             onClick={(e) => {
               e.preventDefault()
               handleNavigate('Settings')
             }}
-            title={collapsed ? 'Settings' : undefined}
+            title={
+              collapsed
+                ? 'Settings'
+                : undefined
+            }
             className={`
               flex items-center gap-3
               px-3 py-2.5
@@ -230,6 +348,7 @@ export default function Sidebar({
               ${collapsed ? 'justify-center' : ''}
             `}
           >
+
             <Settings
               size={18}
               strokeWidth={2}
@@ -239,9 +358,13 @@ export default function Sidebar({
             {!collapsed && (
               <span>Settings</span>
             )}
+
           </a>
 
-          {/* Logout */}
+          {/* ==================================================
+              LOGOUT
+          =================================================== */}
+
           <a
             href="#"
             onClick={(e) => {
@@ -250,7 +373,11 @@ export default function Sidebar({
               // Keep your existing logout logic here
               // if you already have one.
             }}
-            title={collapsed ? 'Logout' : undefined}
+            title={
+              collapsed
+                ? 'Logout'
+                : undefined
+            }
             className={`
               flex items-center gap-3
               px-3 py-2.5
@@ -264,6 +391,7 @@ export default function Sidebar({
               ${collapsed ? 'justify-center' : ''}
             `}
           >
+
             <LogOut
               size={18}
               strokeWidth={2}
@@ -273,14 +401,21 @@ export default function Sidebar({
             {!collapsed && (
               <span>Logout</span>
             )}
+
           </a>
+
         </div>
 
         {/* =====================================================
             COLLAPSE BUTTON
         ====================================================== */}
+
         <button
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={() =>
+            setCollapsed(
+              (value) => !value
+            )
+          }
           className="
             hidden lg:flex
             absolute -right-3 bottom-6
@@ -296,13 +431,21 @@ export default function Sidebar({
           "
           aria-label="Toggle sidebar"
         >
+
           <ChevronLeft
             size={14}
-            className={`transition-transform ${
-              collapsed ? 'rotate-180' : ''
-            }`}
+            className={`
+              transition-transform
+              ${
+                collapsed
+                  ? 'rotate-180'
+                  : ''
+              }
+            `}
           />
+
         </button>
+
       </aside>
     </>
   )
