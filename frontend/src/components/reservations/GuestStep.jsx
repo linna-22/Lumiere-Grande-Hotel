@@ -189,10 +189,10 @@ export default function GuestStep({ guestData, onChange, onNext }) {
             )}
           </div>
 
-          <h3 className="text-white font-semibold mt-4">New / Walk-in Guest</h3>
+          <h3 className="text-white font-semibold mt-4">New Guest</h3>
 
           <p className="text-xs text-slate-400 mt-1">
-            Enter guest information manually.
+            Enter guest information manually for this reservation.
           </p>
         </button>
       </div>

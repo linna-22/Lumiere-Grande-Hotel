@@ -1,161 +1,200 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from "react";
 import {
-  Search,
-  LogOut as CheckOutIcon,
   CheckCircle2,
-  Printer,
-  Mail,
-  X,
-} from 'lucide-react'
-import Sidebar from '../../components/layout/Sidebar'
-import TopBar from '../../components/layout/TopBar'
+  Loader2,
+  LogOut as CheckOutIcon,
+  Search,
+} from "lucide-react";
+import Sidebar from "../../components/layout/Sidebar";
+import TopBar from "../../components/layout/TopBar";
+import {
+  getCheckedInGuests,
+  getBillingSummary,
+  completeCheckOut,
+} from "../../api/checkoutApi";
 
-// Mock data — replace with a real fetch (e.g. GET /api/checkouts?status=in-house)
-const MOCK_GUESTS = [
-  {
-    id: 'HD-2024',
-    guestName: 'Santiago Reyes',
-    initials: 'SR',
-    avatarColor: 'bg-sky-500/30 text-sky-300',
-    room: '401',
-    roomType: 'Suite',
-    checkIn: '2024-07-31',
-    checkOut: '2024-08-04',
-    nights: 4,
-    ratePerNight: 15000,
-    paid: true,
-    extraCharges: [
-      { label: 'Mini Bar (Day 1)', amount: 850 },
-      { label: 'Restaurant - Breakfast x2', amount: 1200 },
-      { label: 'Laundry Service', amount: 480 },
-      { label: 'Spa - 60min Massage', amount: 2800 },
-    ],
-  },
-  {
-    id: 'HD-2025',
-    guestName: 'Maria Santos',
-    initials: 'MS',
-    avatarColor: 'bg-rose-500/30 text-rose-300',
-    room: '201',
-    roomType: 'Deluxe',
-    checkIn: '2024-07-31',
-    checkOut: '2024-08-02',
-    nights: 2,
-    ratePerNight: 6500,
-    paid: true,
-    extraCharges: [{ label: 'Room Service', amount: 650 }],
-  },
-  {
-    id: 'HD-2027',
-    guestName: 'Ana Villanueva',
-    initials: 'AV',
-    avatarColor: 'bg-sky-500/30 text-sky-300',
-    room: '501',
-    roomType: 'Presidential Suite',
-    checkIn: '2024-08-01',
-    checkOut: '2024-08-07',
-    nights: 6,
-    ratePerNight: 25000,
-    paid: true,
-    extraCharges: [],
-  },
-  {
-    id: 'HD-2029',
-    guestName: 'Grace Tan',
-    initials: 'GT',
-    avatarColor: 'bg-violet-500/30 text-violet-300',
-    room: '402',
-    roomType: 'Suite',
-    checkIn: '2024-08-02',
-    checkOut: '2024-08-05',
-    nights: 3,
-    ratePerNight: 15000,
-    paid: false,
-    extraCharges: [{ label: 'Mini Bar', amount: 1100 }],
-  },
-  {
-    id: 'HD-2030',
-    guestName: 'Roberto Garcia',
-    initials: 'RG',
-    avatarColor: 'bg-amber-500/30 text-amber-300',
-    room: '101',
-    roomType: 'Standard',
-    checkIn: '2024-08-02',
-    checkOut: '2024-08-05',
-    nights: 3,
-    ratePerNight: 3500,
-    paid: true,
-    extraCharges: [],
-  },
-]
+function listFromReservations(response) {
+  const page = response?.data;
+  const list = Array.isArray(page)
+    ? page
+    : Array.isArray(page?.data)
+      ? page.data
+      : [];
+  return list.map((r) => {
+    const guest = r.guest || {};
+    const rooms = r.reservation_rooms || r.reservationRooms || [];
+    const rr = rooms[0] || {};
+    const room = rr.room || {};
+    const roomType = rr.roomType || rr.room_type || {};
+    const name =
+      [guest.first_name, guest.last_name].filter(Boolean).join(" ") ||
+      guest.name ||
+      r.guest_name ||
+      "Guest";
+    return {
+      raw: r,
+      id: r.id,
+      reservationCode: r.reservation_code,
+      guestName: name,
+      initials: name
+        .split(" ")
+        .map((x) => x[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase(),
+      room: room.room_number || "N/A",
+      roomId: room.id || rr.room_id,
+      roomType: roomType.name || "Standard",
+      checkIn: r.check_in_date || "",
+      checkOut: r.check_out_date || "",
+      paid: r.payment_status === "paid",
+      totalAmount: Number(r.total_amount || 0),
+      paidAmount: Number(r.paid_amount || 0),
+      invoice: r.invoice || null,
+    };
+  });
+}
 
-const INSPECTION_ITEMS = ['Bathroom', 'Bedroom', 'Mini Bar', 'Electronics', 'Furniture', 'Balcony']
-const VAT_RATE = 0.12
-
-function formatCurrency(n) {
-  return `₱${n.toLocaleString('en-US')}`
+function money(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+  }).format(Number(value || 0));
 }
 
 export default function CheckOut({ onNavigate }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [selectedGuest, setSelectedGuest] = useState(null)
-  const [inspectedItems, setInspectedItems] = useState({})
-  const [discount, setDiscount] = useState(0)
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [completedCheckout, setCompletedCheckout] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [guests, setGuests] = useState([]);
+  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [billing, setBilling] = useState(null);
+  const [query, setQuery] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [loading, setLoading] = useState(true);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [completed, setCompleted] = useState(null);
 
-  const filtered = MOCK_GUESTS.filter((g) => {
-    const q = query.trim().toLowerCase()
-    if (!q) return true
-    return g.guestName.toLowerCase().includes(q) || g.id.toLowerCase().includes(q)
-  })
-
-  const allInspected = useMemo(() => {
-    if (!selectedGuest) return false
-    return INSPECTION_ITEMS.every((item) => inspectedItems[item])
-  }, [selectedGuest, inspectedItems])
-
-  const billing = useMemo(() => {
-    if (!selectedGuest) return null
-    const roomCharges = selectedGuest.ratePerNight * selectedGuest.nights
-    const extrasTotal = selectedGuest.extraCharges.reduce((sum, c) => sum + c.amount, 0)
-    const subtotal = roomCharges + extrasTotal
-    const discountAmount = Math.round(subtotal * (discount / 100))
-    const taxable = subtotal - discountAmount
-    const vat = Math.round(taxable * VAT_RATE)
-    const total = taxable + vat
-    return { roomCharges, extrasTotal, subtotal, discountAmount, vat, total }
-  }, [selectedGuest, discount])
-
-  function handleSelectGuest(guest) {
-    setSelectedGuest(guest)
-    setInspectedItems({})
-    setDiscount(0)
+  async function loadGuests() {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await getCheckedInGuests();
+      setGuests(listFromReservations(response));
+    } catch (err) {
+      setError(err.message || "Unable to load checked-in guests.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function toggleInspectionItem(item) {
-    setInspectedItems((prev) => ({ ...prev, [item]: !prev[item] }))
+  useEffect(() => {
+    loadGuests();
+  }, []);
+
+  async function selectGuest(guest) {
+    setSelectedGuest(guest);
+    setBillingLoading(true);
+    setError("");
+    try {
+      try {
+        const response = await getBillingSummary(guest.id);
+        if (response?.data) {
+          const b = response.data.billing;
+          setBilling({
+            roomCharge: Number(b.room_charge || 0),
+            subtotal: Number(b.subtotal || 0),
+            discountPercent: Number(b.discount_percent || 0),
+            discountAmount: Number(b.discount_amount || 0),
+            vat: Number(b.vat_amount || 0),
+            total: Number(b.total_due || 0),
+            paidAmount: Number(b.paid_amount || 0),
+            balanceDue: Number(b.balance_due || 0),
+          });
+          setDiscount(Number(b.discount_percent || 0));
+          return;
+        }
+      } catch (_) {
+        // The current backend has a method-name mismatch on the dedicated
+        // billing route. Fall back to the working reservations payload.
+      }
+
+      const subtotal = Number(
+        guest.invoice?.total_amount ?? guest.totalAmount ?? 0,
+      );
+      const paidAmount = Number(
+        guest.invoice?.paid_amount ?? guest.paidAmount ?? 0,
+      );
+      const discountAmount = subtotal * (Number(discount) / 100);
+      const taxable = Math.max(0, subtotal - discountAmount);
+      const vat = taxable * 0.12;
+      const total = taxable + vat;
+      setBilling({
+        roomCharge: subtotal,
+        subtotal,
+        discountPercent: Number(discount),
+        discountAmount,
+        vat,
+        total,
+        paidAmount,
+        balanceDue: Math.max(0, total - paidAmount),
+      });
+    } finally {
+      setBillingLoading(false);
+    }
   }
 
-  function handleMarkAllInspected() {
-    const all = {}
-    INSPECTION_ITEMS.forEach((item) => (all[item] = true))
-    setInspectedItems(all)
-  }
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return guests;
+    return guests.filter((g) =>
+      [g.guestName, g.room, g.reservationCode].some((v) =>
+        String(v || "")
+          .toLowerCase()
+          .includes(q),
+      ),
+    );
+  }, [guests, query]);
 
-  function handleCompleteCheckout() {
-    // TODO: submit to backend (e.g. POST /api/checkouts/{guestId}/complete)
-    setCompletedCheckout({ guest: selectedGuest, total: billing.total })
-    setShowSuccessModal(true)
-  }
+  const calculated = useMemo(() => {
+    if (!billing) return null;
+    const discountAmount = billing.subtotal * (Number(discount || 0) / 100);
+    const taxable = Math.max(0, billing.subtotal - discountAmount);
+    const vat = taxable * 0.12;
+    const total = taxable + vat;
+    return {
+      ...billing,
+      discountAmount,
+      vat,
+      total,
+      balanceDue: Math.max(0, total - billing.paidAmount),
+    };
+  }, [billing, discount]);
 
-  function handleDone() {
-    setShowSuccessModal(false)
-    setSelectedGuest(null)
-    setInspectedItems({})
-    setDiscount(0)
-    setCompletedCheckout(null)
+  async function handleCompleteCheckout() {
+    if (!selectedGuest || !calculated) return;
+    setLoading(true);
+    setError("");
+    try {
+      await completeCheckOut(selectedGuest.id, {
+        payment_method: paymentMethod,
+        discount_percent: Number(discount || 0),
+        total_due: calculated.total,
+      });
+      setCompleted({
+        guestName: selectedGuest.guestName,
+        room: selectedGuest.room,
+        total: calculated.total,
+      });
+      setSelectedGuest(null);
+      setBilling(null);
+      await loadGuests();
+    } catch (err) {
+      setError(err.message || "Check-out failed.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -167,278 +206,211 @@ export default function CheckOut({ onNavigate }) {
         onNavigate={onNavigate}
       />
       <div className="flex-1 min-w-0">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} onNavigate={onNavigate} />
+        <TopBar
+          onMenuClick={() => setSidebarOpen(true)}
+          onNavigate={onNavigate}
+        />
         <main className="p-4 sm:p-6 max-w-[1600px] mx-auto">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif tracking-tight">
-              Check Out
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">Process guest departures</p>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif">
+            Check Out
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Process checked-in guests and release rooms to housekeeping.
+          </p>
+          {error && (
+            <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 px-4 py-3 text-sm">
+              {error}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 mt-6">
-            {/* Left — Current In-House Guests */}
             <div className="bg-base-850 border border-base-border rounded-2xl p-5 h-fit">
               <h2 className="text-white font-serif font-bold text-lg mb-4">
-                Current In-House Guests
+                Checked-in Guests
               </h2>
               <div className="relative mb-4">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
                 <input
-                  type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search guest or booking ID..."
-                  className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                  placeholder="Guest, room, reservation..."
+                  className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2.5 text-sm text-white"
                 />
               </div>
-
-              <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
-                {filtered.map((g) => (
+              {loading && guests.length === 0 && (
+                <Loader2 className="animate-spin text-amber-400 mx-auto my-8" />
+              )}
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {filtered.map((guest) => (
                   <button
-                    key={g.id}
-                    onClick={() => handleSelectGuest(g)}
-                    className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                      selectedGuest?.id === g.id
-                        ? 'bg-base-800 border-amber-400/50'
-                        : 'bg-base-800/50 border-base-border hover:bg-base-800'
-                    }`}
+                    key={guest.id}
+                    onClick={() => selectGuest(guest)}
+                    className={`w-full text-left p-3 rounded-xl border ${selectedGuest?.id === guest.id ? "border-amber-400 bg-base-800" : "border-base-border bg-base-800/50 hover:bg-base-800"}`}
                   >
-                    <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${g.avatarColor}`}
-                    >
-                      {g.initials}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white text-sm font-semibold truncate">{g.guestName}</p>
-                      <p className="text-xs text-slate-400 truncate">
-                        {g.id} · Room {g.room} ({g.roomType})
-                      </p>
-                      <p className="text-xs text-slate-500">Check-out: {g.checkOut}</p>
-                    </div>
-                    <span
-                      className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full shrink-0 ${
-                        g.paid
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-rose-500/15 text-rose-400'
-                      }`}
-                    >
-                      {g.paid ? 'PAID' : 'UNPAID'}
-                    </span>
+                    <p className="text-white font-semibold text-sm">
+                      {guest.guestName}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {guest.reservationCode} · Room {guest.room}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {guest.checkIn} → {guest.checkOut}
+                    </p>
                   </button>
                 ))}
-
-                {filtered.length === 0 && (
-                  <p className="text-center text-sm text-slate-500 py-8">No guests found.</p>
+                {!loading && filtered.length === 0 && (
+                  <p className="text-center text-sm text-slate-500 py-8">
+                    No checked-in guests found.
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* Right */}
-            {!selectedGuest ? (
-              <div className="bg-base-850 border border-base-border rounded-2xl p-10 flex flex-col items-center justify-center text-center min-h-[400px]">
-                <div className="w-14 h-14 rounded-full bg-base-800 border border-base-border flex items-center justify-center mb-4">
-                  <CheckOutIcon size={22} className="text-slate-500" />
+            <div className="space-y-6">
+              {!selectedGuest && (
+                <div className="bg-base-850 border border-base-border rounded-2xl p-10 min-h-[400px] flex items-center justify-center text-slate-500">
+                  Select a checked-in guest to continue.
                 </div>
-                <h3 className="text-white font-serif font-bold text-lg">
-                  Select a guest to process check-out
-                </h3>
-                <p className="text-sm text-slate-500 mt-1">Billing summary will appear here</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Guest summary bar */}
-                <div className="bg-base-850 border border-base-border rounded-2xl p-5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${selectedGuest.avatarColor}`}
-                    >
-                      {selectedGuest.initials}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-white font-semibold truncate">{selectedGuest.guestName}</p>
-                      <p className="text-sm text-slate-400 truncate">
-                        Room {selectedGuest.room} · {selectedGuest.checkIn} → {selectedGuest.checkOut} (
-                        {selectedGuest.nights} nights)
-                      </p>
-                    </div>
+              )}
+              {selectedGuest && (
+                <>
+                  <div className="bg-base-850 border border-base-border rounded-2xl p-6">
+                    <h2 className="text-white font-serif font-bold text-lg mb-4">
+                      Guest
+                    </h2>
+                    <p className="text-white font-semibold">
+                      {selectedGuest.guestName}
+                    </p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Room {selectedGuest.room} · {selectedGuest.roomType}
+                    </p>
                   </div>
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full shrink-0 ${
-                      selectedGuest.paid
-                        ? 'bg-emerald-500/15 text-emerald-400'
-                        : 'bg-rose-500/15 text-rose-400'
-                    }`}
-                  >
-                    {selectedGuest.paid ? 'PAID' : 'UNPAID'}
-                  </span>
-                </div>
-
-                {/* Room Inspection */}
-                <div className="bg-base-850 border border-base-border rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-white font-serif font-bold text-lg">Room Inspection</h2>
-                    <span
-                      className={`text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${
-                        allInspected
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-violet-500/15 text-violet-400'
-                      }`}
-                    >
-                      {allInspected ? 'INSPECTED' : 'PENDING'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                    {INSPECTION_ITEMS.map((item) => {
-                      const checked = Boolean(inspectedItems[item])
-                      return (
-                        <button
-                          key={item}
-                          onClick={() => toggleInspectionItem(item)}
-                          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                            checked
-                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
-                              : 'bg-base-800 border-base-border text-slate-300 hover:bg-base-700'
-                          }`}
-                        >
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              checked ? 'bg-emerald-400' : 'bg-amber-400'
-                            }`}
-                          />
-                          {item}
-                        </button>
+                  <div className="bg-base-850 border border-base-border rounded-2xl p-6">
+                    <h2 className="text-white font-serif font-bold text-lg mb-4">
+                      Billing Summary
+                    </h2>
+                    {billingLoading ? (
+                      <Loader2 className="animate-spin text-amber-400" />
+                    ) : (
+                      calculated && (
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Subtotal</span>
+                            <span className="text-white">
+                              {money(calculated.subtotal)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Discount (%)</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={discount}
+                              onChange={(e) =>
+                                setDiscount(
+                                  Math.min(
+                                    100,
+                                    Math.max(0, Number(e.target.value)),
+                                  ),
+                                )
+                              }
+                              className="w-20 bg-base-800 border border-base-border rounded px-2 py-1 text-right text-white"
+                            />
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">
+                              Discount amount
+                            </span>
+                            <span className="text-rose-400">
+                              -{money(calculated.discountAmount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">VAT (12%)</span>
+                            <span className="text-white">
+                              {money(calculated.vat)}
+                            </span>
+                          </div>
+                          <div className="border-t border-base-border pt-3 flex justify-between font-bold">
+                            <span className="text-white">Total Due</span>
+                            <span className="text-amber-400 text-xl">
+                              {money(calculated.total)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Current paid</span>
+                            <span className="text-emerald-400">
+                              {money(calculated.paidAmount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Balance</span>
+                            <span className="text-white">
+                              {money(calculated.balanceDue)}
+                            </span>
+                          </div>
+                          <div className="flex gap-2 pt-3">
+                            {["cash", "bakong_khqr"].map((method) => (
+                              <button
+                                key={method}
+                                onClick={() => setPaymentMethod(method)}
+                                className={`px-3 py-2 rounded-lg border text-xs ${
+                                  paymentMethod === method
+                                    ? "border-amber-400 text-amber-400"
+                                    : "border-base-border text-slate-300"
+                                }`}
+                              >
+                                {method === "bakong_khqr"
+                                  ? "Bakong KHQR"
+                                  : "Cash"}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={handleCompleteCheckout}
+                            disabled={loading}
+                            className="w-full mt-4 flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-base-950 font-semibold py-3 rounded-lg"
+                          >
+                            <CheckOutIcon size={16} />
+                            {loading ? "Completing..." : "Complete Check-out"}
+                          </button>
+                        </div>
                       )
-                    })}
+                    )}
                   </div>
-
-                  <button
-                    onClick={handleMarkAllInspected}
-                    className="flex items-center gap-1.5 bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                  >
-                    <CheckCircle2 size={15} />
-                    Mark as Inspected
-                  </button>
-                </div>
-
-                {/* Billing Summary */}
-                <div className="bg-base-850 border border-base-border rounded-2xl p-6">
-                  <h2 className="text-white font-serif font-bold text-lg mb-4">Billing Summary</h2>
-
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">
-                        Room Charges ({selectedGuest.nights} nights × {formatCurrency(selectedGuest.ratePerNight)})
-                      </span>
-                      <span className="text-slate-200">{formatCurrency(billing.roomCharges)}</span>
-                    </div>
-
-                    {selectedGuest.extraCharges.map((charge) => (
-                      <div key={charge.label} className="flex items-center justify-between">
-                        <span className="text-slate-400">{charge.label}</span>
-                        <span className="text-slate-200">{formatCurrency(charge.amount)}</span>
-                      </div>
-                    ))}
-
-                    <div className="border-t border-base-border pt-3 flex items-center justify-between font-semibold">
-                      <span className="text-white">Subtotal</span>
-                      <span className="text-white">{formatCurrency(billing.subtotal)}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Discount (%)</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={discount}
-                          onChange={(e) => setDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
-                          className="w-16 bg-base-800 border border-base-border rounded-md px-2 py-1 text-right text-slate-200 focus:outline-none focus:border-amber-400"
-                        />
-                        <span className="text-rose-400 w-20 text-right">
-                          -{formatCurrency(billing.discountAmount)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">VAT (12%)</span>
-                      <span className="text-slate-200">{formatCurrency(billing.vat)}</span>
-                    </div>
-
-                    <div className="bg-base-800 rounded-lg px-4 py-3.5 flex items-center justify-between mt-2">
-                      <span className="text-white font-bold uppercase tracking-wide text-sm">
-                        Total Due
-                      </span>
-                      <span className="text-amber-400 font-bold text-xl">
-                        {formatCurrency(billing.total)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-5">
-                    <button className="flex items-center justify-center gap-1.5 bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
-                      <Printer size={15} />
-                      Preview Invoice
-                    </button>
-                    <button className="flex items-center justify-center gap-1.5 bg-base-800 hover:bg-base-700 border border-base-border text-slate-200 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
-                      <Mail size={15} />
-                      Email Receipt
-                    </button>
-                    <button
-                      onClick={handleCompleteCheckout}
-                      className="flex-1 flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold px-4 py-2.5 rounded-lg transition-colors"
-                    >
-                      <CheckOutIcon size={16} />
-                      Complete Check-out
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </main>
       </div>
 
-      {/* Success modal */}
-      {showSuccessModal && completedCheckout && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-base-900 border border-base-border rounded-2xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-base-border">
-              <h2 className="text-white font-serif font-bold text-lg">Check-out Complete</h2>
-              <button onClick={handleDone} className="text-slate-400 hover:text-white transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-6 text-center">
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center">
-                  <CheckCircle2 size={30} className="text-emerald-400" />
-                </div>
-              </div>
-              <h3 className="text-white font-bold text-lg">Check-out Successful</h3>
-              <p className="text-sm text-slate-400 mt-1">
-                {completedCheckout.guest.guestName} has been checked out from Room{' '}
-                {completedCheckout.guest.room}
-              </p>
-
-              <p className="text-amber-400 font-semibold mt-4">
-                Total Charged: {formatCurrency(completedCheckout.total)}
-              </p>
-
-              <button
-                onClick={handleDone}
-                className="w-full bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold py-2.5 rounded-lg transition-colors mt-6"
-              >
-                Done
-              </button>
-            </div>
+      {completed && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-base-900 border border-base-border rounded-2xl p-7 text-center max-w-sm w-full">
+            <CheckCircle2 size={48} className="mx-auto text-emerald-400" />
+            <h2 className="text-white font-bold text-xl mt-4">
+              Check-out Complete
+            </h2>
+            <p className="text-slate-400 text-sm mt-2">
+              {completed.guestName} checked out from Room {completed.room}.
+            </p>
+            <p className="text-amber-400 font-semibold mt-4">
+              Total: {money(completed.total)}
+            </p>
+            <button
+              onClick={() => setCompleted(null)}
+              className="w-full mt-6 bg-amber-400 text-base-950 font-semibold py-2.5 rounded-lg"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

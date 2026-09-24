@@ -30,9 +30,11 @@ import AddReservation from './pages/reservations/AddReservation'
 import BookingSuccess from './pages/booking/BookingSuccess'
 import Invoices from './pages/invoices/Invoices'
 import Housekeeping from './pages/housekeeping/Housekeeping'
+import Settings from './pages/Settings'
 
 import { setToken } from './api/client'
 import { useAuth } from './hooks/useAuth'
+import RealtimeNotifications from './components/common/RealtimeNotifications'
 
 const pages = {
   Dashboard,
@@ -57,6 +59,7 @@ const pages = {
   'Check Out': CheckOut,
 
   Housekeeping,
+  Settings,
 
   Profile,
   EditProfile,
@@ -210,10 +213,13 @@ export default function App() {
   const Page = pages[page] || Login
 
   return (
-    <Page
+    <>
+      <RealtimeNotifications />
+      <Page
       auth={auth}
       onNavigate={handleNavigate}
-      {...navigationData}
-    />
+        {...navigationData}
+      />
+    </>
   )
 }

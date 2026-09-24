@@ -17,7 +17,7 @@ export default function Header() {
 
       <nav className="hidden md:flex items-center gap-8">
         {navLinks.map(({ label, active }) => (
-          
+          <a
             key={label}
             href="#"
             className={`text-sm tracking-wide transition-colors ${

@@ -8,6 +8,7 @@ import {
   updateTaskStatus,
 } from '../../api/housekeepingApi'
 import { getErrorMessage, nextAction, normalizeTask } from './Housekeepingutils'
+import { echo } from '../../lib/echo'
 
 export default function useHousekeeping() {
   const [tasks, setTasks] = useState([])
@@ -33,6 +34,24 @@ export default function useHousekeeping() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Checkout and manual task creation broadcast on this channel.
+  // Refresh the server list so the housekeeping board updates immediately.
+  useEffect(() => {
+    const channel = echo.channel('housekeeping-board')
+
+    const handleTaskCreated = (event) => {
+      console.log('[WebSocket] housekeeping.task.created received:', event)
+      load({ silent: true })
+    }
+
+    channel.listen('.housekeeping.task.created', handleTaskCreated)
+
+    return () => {
+      channel.stopListening('.housekeeping.task.created', handleTaskCreated)
+      echo.leaveChannel('housekeeping-board')
+    }
   }, [load])
 
   /**

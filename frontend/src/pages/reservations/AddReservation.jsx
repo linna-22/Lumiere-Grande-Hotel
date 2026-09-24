@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Loader2,
   CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 
 import Sidebar from "../../components/layout/Sidebar";
@@ -16,6 +15,7 @@ import StayStep from "../../components/reservations/StayStep";
 import RoomStep from "../../components/reservations/RoomStep";
 import PaymentStep from "../../components/reservations/PaymentStep";
 import SuccessModal from "../../components/rooms/SuccessModal";
+import ErrorModal from "../../components/common/ErrorModal";
 import { createReservation } from "../../api/admin";
 
 export default function AddReservation({ onNavigate }) {
@@ -27,6 +27,7 @@ export default function AddReservation({ onNavigate }) {
   const [submitError, setSubmitError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const [form, setForm] = useState({
     // Guest
@@ -116,6 +117,7 @@ export default function AddReservation({ onNavigate }) {
 
     setSubmitError("");
     setSuccessMessage("");
+    setShowErrorModal(false);
 
     // Basic frontend safety check
     if (!form.guest_id && !form.guest_details?.first_name) {
@@ -220,10 +222,16 @@ export default function AddReservation({ onNavigate }) {
     } catch (error) {
       console.error("Failed to create reservation:", error);
 
-      setSubmitError(
+      // Keep the API's useful business message (for example,
+      // "Room 101 has already been booked") but show it in a modal
+      // instead of displaying the error inline on the page.
+      const apiMessage =
+        error?.data?.message ||
         error?.message ||
-          "Failed to create reservation. Please try again."
-      );
+        "Failed to create reservation. Please try again.";
+
+      setSubmitError(apiMessage);
+      setShowErrorModal(true);
     } finally {
       setSubmitting(false);
     }
@@ -297,23 +305,6 @@ export default function AddReservation({ onNavigate }) {
             />
           </div>
 
-          {/* Submission Error */}
-          {submitError && (
-            <div className="mb-6 flex items-start gap-3 bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
-              <AlertCircle
-                size={18}
-                className="text-rose-400 mt-0.5 shrink-0"
-              />
-
-              <div>
-                <p className="text-sm font-medium text-rose-300">
-                  Reservation could not be created
-                </p>
-
-                <p className="text-sm text-rose-400/90 mt-1">{submitError}</p>
-              </div>
-            </div>
-          )}
 
           {/* Success */}
           {successMessage && (
@@ -394,6 +385,13 @@ export default function AddReservation({ onNavigate }) {
             setShowSuccessModal(false);
             onNavigate?.("Reservations");
           }}
+        />
+      )}
+      {showErrorModal && (
+        <ErrorModal
+          title="Reservation could not be created"
+          message={submitError}
+          onClose={() => setShowErrorModal(false)}
         />
       )}
     </div>

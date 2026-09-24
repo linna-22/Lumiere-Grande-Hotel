@@ -47,7 +47,7 @@ export function normalizeReservation(r) {
   ]
 
   return {
-    dbId: r.id,
+    dbId: r.id ?? r.reservation_id,
     id: r.reservation_code,
     statusKey: r.status,
     guest: guestName,
@@ -64,5 +64,6 @@ export function normalizeReservation(r) {
     source: r.creator ? 'Staff' : 'Website',
     amount: Number(r.total_amount ?? 0),
     paid: Number(r.paid_amount ?? 0),
+    raw: r,
   }
 }

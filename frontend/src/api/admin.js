@@ -109,3 +109,23 @@ export function listRooms(params = {}) {
         `/rooms${query ? `?${query}` : ''}`
     )
 }
+
+// Additional read endpoints used by dashboard/front-desk features.
+export function listReservations(params = {}) {
+  const query = new URLSearchParams(params).toString()
+  return apiFetch(`/reservations${query ? `?${query}` : ''}`)
+}
+
+export function getInvoice(id) {
+  return apiFetch(`/invoices/${id}`)
+}
+
+export function listInvoices(params = {}) {
+  const query = new URLSearchParams(params).toString()
+  return apiFetch(`/invoices${query ? `?${query}` : ''}`)
+}
+
+export function getMonthlyRevenue(params = {}) {
+  const query = new URLSearchParams(params).toString()
+  return apiFetch(`/analytics/monthly-revenue${query ? `?${query}` : ''}`)
+}
