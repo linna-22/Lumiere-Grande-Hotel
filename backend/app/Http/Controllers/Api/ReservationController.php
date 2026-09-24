@@ -392,68 +392,172 @@ class ReservationController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $reservation = Reservations::findOrFail($id);
+        $reservation = Reservations::with(['guest', 'reservationRooms.room', 'invoice'])
+            ->findOrFail($id);
 
-        // 1. Prevent editing completed or cancelled bookings
-        if (in_array($reservation->status, ['checked_out', 'cancelled'])) {
+        if (in_array($reservation->status, ['checked_in', 'checked_out', 'cancelled'])) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Cannot modify a completed or cancelled reservation.'
+                'status' => 'error',
+                'message' => 'Cannot modify a reservation that is checked in, checked out, or cancelled.',
             ], 422);
         }
 
-        // 2. Validate input fields
         $validated = $request->validate([
-            'guest_name'     => 'sometimes|string|max:255',
-            'guest_phone'    => 'sometimes|string|max:50',
-            'check_in_date'  => 'sometimes|date|after_or_equal:today',
+            'guest' => 'sometimes|array',
+            'guest.first_name' => 'required_with:guest|string|max:100',
+            'guest.last_name' => 'required_with:guest|string|max:100',
+            'guest.email' => 'nullable|email|max:255',
+            'guest.phone' => 'nullable|string|max:30',
+            'check_in_date' => 'sometimes|date',
             'check_out_date' => 'sometimes|date|after:check_in_date',
-            'room_type_id'   => 'sometimes|exists:room_types,id',
-            'special_requests' => 'nullable|string',
+            'adults' => 'sometimes|integer|min:1',
+            'children' => 'sometimes|integer|min:0',
         ]);
 
-        // 3. Handle Date or Room Changes (Check Availability & Recalculate)
-        if ($request->hasAny(['check_in_date', 'check_out_date', 'room_type_id'])) {
-            // Optional: Run availability check logic here
-        }
+        return DB::transaction(function () use ($reservation, $validated) {
+            $checkIn = $validated['check_in_date'] ?? $reservation->check_in_date;
+            $checkOut = $validated['check_out_date'] ?? $reservation->check_out_date;
 
-        // 4. Save updates
-        $reservation->update($validated);
+            // Prevent changing dates into a period where one of this
+            // reservation's already assigned physical rooms is booked elsewhere.
+            foreach ($reservation->reservationRooms as $reservationRoom) {
+                if (!$reservationRoom->room_id) {
+                    continue;
+                }
 
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'Reservation updated successfully.',
-            'data'    => $reservation
-        ]);
+                $conflict = Reservation_rooms::query()
+                    ->where('room_id', $reservationRoom->room_id)
+                    ->where('reservation_id', '!=', $reservation->id)
+                    ->whereHas('reservation', function ($query) use ($checkIn, $checkOut) {
+                        $query->whereIn('status', ['confirmed', 'checked_in'])
+                            ->where('check_in_date', '<', $checkOut)
+                            ->where('check_out_date', '>', $checkIn);
+                    })
+                    ->exists();
+
+                if ($conflict) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => "Room {$reservationRoom->room->room_number} is already booked for the selected dates.",
+                    ], 422);
+                }
+            }
+
+            // Recalculate room charges when dates change.
+            $nights = max(1, (int) round((strtotime($checkOut) - strtotime($checkIn)) / 86400));
+            $subtotal = $reservation->reservationRooms->sum(function ($reservationRoom) use ($nights) {
+                return (float) $reservationRoom->nightly_rate * $nights;
+            });
+
+            $invoice = $reservation->invoice;
+            $tax = (float) ($invoice->tax ?? 0);
+            $discount = (float) ($invoice->discount ?? 0);
+            $totalAmount = max(0, $subtotal + $tax - $discount);
+
+            if ((float) $reservation->paid_amount > $totalAmount) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'The new reservation total cannot be lower than the amount already paid.',
+                ], 422);
+            }
+
+            if (isset($validated['guest'])) {
+                $reservation->guest->update($validated['guest']);
+            }
+
+            $reservation->update([
+                'check_in_date' => $checkIn,
+                'check_out_date' => $checkOut,
+                'adults' => $validated['adults'] ?? $reservation->adults,
+                'children' => $validated['children'] ?? $reservation->children,
+            ]);
+
+            $paidAmount = (float) $reservation->paid_amount;
+            $paymentStatus = 'unpaid';
+            if ($paidAmount >= $totalAmount && $totalAmount > 0) {
+                $paymentStatus = 'paid';
+            } elseif ($paidAmount > 0) {
+                $paymentStatus = 'partially_paid';
+            }
+
+            $reservation->update([
+                'total_amount' => $totalAmount,
+                'payment_status' => $paymentStatus,
+            ]);
+
+            if ($invoice) {
+                $invoice->update([
+                    'subtotal' => $subtotal,
+                    'total_amount' => $totalAmount,
+                    'status' => $paymentStatus,
+                ]);
+
+                $invoiceItem = $invoice->items()->where('item_type', 'room_charge')->first();
+                if ($invoiceItem) {
+                    $invoiceItem->update([
+                        'description' => "Reservation for {$nights} night(s)",
+                        'quantity' => $nights,
+                        'unit_price' => $nights > 0 ? ($subtotal / $nights) : $subtotal,
+                        'amount' => $subtotal,
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Reservation updated successfully.',
+                'data' => $reservation->fresh()->load([
+                    'guest',
+                    'reservationRooms.room',
+                    'reservationRooms.roomType',
+                    'invoice',
+                    'payments',
+                    'creator',
+                ]),
+            ]);
+        });
     }
-
-
 
     public function destroy(string $id): JsonResponse
     {
-        $reservation = Reservations::findOrFail($id);
+        $reservation = Reservations::with(['reservationRooms.room'])->findOrFail($id);
 
-        // Prevent deletion/cancellation if guest is already checked in or checked out
         if (in_array($reservation->status, ['checked_in', 'checked_out'])) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Cannot cancel a reservation that is currently checked in or completed.'
-            ], 400);
+                'status' => 'error',
+                'message' => 'Cannot cancel a reservation that is currently checked in or already completed.',
+            ], 422);
         }
 
-        // Cancel reservation and release allocated room(s)
-        DB::transaction(function () use ($reservation) {
-            $reservation->update(['status' => 'cancelled']);
+        if ($reservation->status === 'cancelled') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This reservation is already cancelled.',
+            ], 422);
+        }
 
-            // Set room status back to available
-            if ($reservation->room_id) {
-                Rooms::where('id', $reservation->room_id)->update(['status' => 'available']);
+        DB::transaction(function () use ($reservation) {
+            foreach ($reservation->reservationRooms as $reservationRoom) {
+                if ($reservationRoom->room_id && $reservationRoom->room) {
+                    // A reservation normally does not occupy the room until check-in.
+                    // Release only rooms that are still available/reserved for this booking.
+                    if (in_array($reservationRoom->room->status, ['available', 'reserved'])) {
+                        $reservationRoom->room->update(['status' => 'available']);
+                    }
+                }
+
+                $reservationRoom->update([
+                    'status' => 'cancelled',
+                ]);
             }
+
+            $reservation->update(['status' => 'cancelled']);
         });
 
         return response()->json([
-            'status'  => 'success',
-            'message' => 'Reservation cancelled successfully.'
+            'status' => 'success',
+            'message' => 'Reservation cancelled successfully.',
         ]);
     }
+
 }

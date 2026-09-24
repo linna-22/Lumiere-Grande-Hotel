@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Events\RoomStatusUpdated;
+use App\Events\HousekeepingTaskCreated;
 use App\Http\Controllers\Controller;
+use App\Models\Housekeeping_tasks;
+use App\Models\Payments;
 use App\Models\Reservations;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,83 +14,95 @@ use Illuminate\Support\Facades\DB;
 
 class CheckOutController extends Controller
 {
-
-    public function getCheckedInGuest(): JsonResponse
+    public function getCheckedInGuests(): JsonResponse
     {
-
-        $guests = Reservations::with(['guest', 'room', 'room.roomType', 'invoice'])
-            ->where(['status', 'checked_in'])
+        $reservations = Reservations::with([
+            'guest',
+            'reservationRooms.room.roomType',
+            'invoice',
+        ])
+            ->where('status', 'checked_in')
             ->orderBy('check_out_date', 'asc')
-            ->get()
-            ->map(function ($reservation) {
-                $invoice = $reservation->invoice;
-                $isPaid = $invoice ? $invoice->status === 'paid' : false;
+            ->get();
 
-                return [
-                    'reservation_id' => $reservation->id,
-                    'reference_no'   => $reservation->reference_no ?? 'HD-' . $reservation->id,
-                    'guest_name'     => $reservation->guest->name ?? $reservation->guest_name,
-                    'initials'       => $this->getInitials($reservation->guest->name ?? $reservation->guest_name),
-                    'room_number'    => $reservation->room->room_number ?? 'N/A',
-                    'room_type'      => $reservation->room->roomType->name ?? 'Standard',
-                    'check_out_date' => $reservation->check_out_date,
-                    'payment_status' => $isPaid ? 'PAID' : 'UNPAID',
-                ];
-            });
+        $guests = $reservations->map(function ($reservation) {
+            $firstReservationRoom = $reservation->reservationRooms->first();
+            $room = $firstReservationRoom?->room;
+
+            $guestName = trim(
+                ($reservation->guest->first_name ?? '') . ' ' .
+                ($reservation->guest->last_name ?? '')
+            );
+
+            return [
+                'reservation_id' => $reservation->id,
+                'reservation_code' => $reservation->reservation_code,
+                'guest_name' => $guestName !== ''
+                    ? $guestName
+                    : ($reservation->guest->name ?? 'Guest'),
+                'room_number' => $room?->room_number ?? 'N/A',
+                'room_id' => $room?->id,
+                'room_type' => $room?->roomType?->name ?? 'Standard',
+                'check_in_date' => $reservation->check_in_date,
+                'check_out_date' => $reservation->check_out_date,
+                'payment_status' => $reservation->payment_status,
+                'total_amount' => (float) $reservation->total_amount,
+                'paid_amount' => (float) $reservation->paid_amount,
+            ];
+        });
 
         return response()->json([
             'status' => 'success',
-            'data'   => $guests
+            'data' => $guests,
         ]);
     }
 
-    public function getBillSummary(string $reservationId): JsonResponse
+    /**
+     * Return billing information using the actual invoice/reservation schema.
+     */
+    public function getBillingSummary(string $reservationId): JsonResponse
     {
-        $reservation = Reservations::with(['guest', 'room.roomType', 'invoice.items', 'services'])
-            ->findOrFail($reservationId);
+        $reservation = Reservations::with([
+            'guest',
+            'reservationRooms.room.roomType',
+            'invoice.items',
+        ])->findOrFail($reservationId);
 
         $invoice = $reservation->invoice;
-
-        $roomCharge = $invoice->room_charge ?? ($reservation->room->roomType->price_per_night * $reservation->total_nights);
-        $serviceItems = $invoice ? $invoice->items : [];
-        $subtotal = $roomCharge + $serviceItems->sum('amount');
-
-        $discountPercent = $invoice->discount_percent ?? 0;
-        $discountAmount  = $subtotal * ($discountPercent / 100);
-        $taxableAmount   = $subtotal - $discountAmount;
-
-        $vatPercent = 12; // 12% VAT as shown in UI
-        $vatAmount  = $taxableAmount * ($vatPercent / 100);
-        $totalDue   = $taxableAmount + $vatAmount;
+        $subtotal = (float) ($invoice?->subtotal ?? $reservation->total_amount);
+        $discountAmount = (float) ($invoice?->discount ?? 0);
+        $taxAmount = (float) ($invoice?->tax ?? 0);
+        $totalDue = (float) ($invoice?->total_amount ?? $reservation->total_amount);
+        $paidAmount = (float) $reservation->paid_amount;
 
         return response()->json([
             'status' => 'success',
-            'data'   => [
+            'data' => [
                 'reservation_id' => $reservation->id,
                 'guest' => [
-                    'first_name'  => $reservation->guest->first_name ?? $reservation->guest_name,
-                    'last_name' => $reservation->guest->last_name ?? $reservation->guest_name,
-                    'phone' => $reservation->guest->phone ?? $reservation->guest_phone,
+                    'first_name' => $reservation->guest->first_name ?? '',
+                    'last_name' => $reservation->guest->last_name ?? '',
+                    'phone' => $reservation->guest->phone ?? '',
                 ],
-                'room' => [
-                    'id'          => $reservation->room_id,
-                    'room_number' => $reservation->room->room_number ?? 'N/A',
-                    'inspected'   => $reservation->room_inspected ?? false,
-                ],
+                'rooms' => $reservation->reservationRooms->map(function ($reservationRoom) {
+                    return [
+                        'reservation_room_id' => $reservationRoom->id,
+                        'room_id' => $reservationRoom->room_id,
+                        'room_number' => $reservationRoom->room?->room_number,
+                        'room_type' => $reservationRoom->roomType?->name,
+                        'nightly_rate' => (float) $reservationRoom->nightly_rate,
+                    ];
+                })->values(),
                 'billing' => [
-                    'room_charge'      => $roomCharge,
-                    'total_nights'     => $reservation->total_nights ?? 1,
-                    // 'items'            => $serviceItems,
-                    'subtotal'         => $subtotal,
-                    'discount_percent' => $discountPercent,
-                    'discount_amount'  => $discountAmount,
-                    'vat_percent'      => $vatPercent,
-                    'vat_amount'       => $vatAmount,
-                    'total_due'        => $totalDue,
-                    'paid_amount'      => $invoice->paid_amount ?? 0,
-                    'balance_due'      => max(0, $totalDue - ($invoice->paid_amount ?? 0)),
-                ]
-            ]
+                    'subtotal' => $subtotal,
+                    'discount_percent' => $subtotal > 0 ? round(($discountAmount / $subtotal) * 100, 2) : 0,
+                    'discount_amount' => $discountAmount,
+                    'vat_amount' => $taxAmount,
+                    'total_due' => $totalDue,
+                    'paid_amount' => $paidAmount,
+                    'balance_due' => max(0, $totalDue - $paidAmount),
+                ],
+            ],
         ]);
     }
 
@@ -98,49 +113,135 @@ class CheckOutController extends Controller
             'discount_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        return DB::transaction(function () use ($request, $reservationId) {
-            $reservation = Reservations::with(['room', 'invoice'])->findOrFail($reservationId);
+        $result = DB::transaction(function () use ($request, $reservationId) {
+            $reservation = Reservations::with([
+                'guest',
+                'invoice',
+                'reservationRooms.room',
+            ])->lockForUpdate()->findOrFail($reservationId);
 
             if ($reservation->status !== 'checked_in') {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'Guest is not currently checked in.'
-                ], 422);
+                return [
+                    'response' => response()->json([
+                        'status' => 'error',
+                        'message' => 'Guest is not currently checked in.',
+                    ], 422),
+                ];
             }
 
-            // A. Update Reservation Status
-            $reservation->update([
-                'status'         => 'checked_out',
-                'actual_check_out' => now(),
-            ]);
+            $invoice = $reservation->invoice;
 
-            // B. Update Room Status to Needs Cleaning (for Housekeeping tab)
-            if ($reservation->room) {
-                $reservation->room->update([
-                    'status' => 'cleaning', // Send room straight to housekeeping queue
-                ]);
+            // The checkout screen calculates the discount from the invoice
+            // subtotal. The server is the final source of truth.
+            $subtotal = (float) ($invoice?->subtotal ?? $reservation->total_amount);
+            $discountPercent = (float) ($request->input('discount_percent') ?? 0);
+            $discountAmount = round($subtotal * ($discountPercent / 100), 2);
+            $taxableAmount = max(0, $subtotal - $discountAmount);
 
-                DB::afterCommit(fn() => RoomStatusUpdated::dispatch($reservation->room->fresh()));
+            // Keep the existing hotel's checkout VAT rule.
+            $vatAmount = round($taxableAmount * 0.12, 2);
+            $totalDue = round($taxableAmount + $vatAmount, 2);
+            $paidAmount = (float) $reservation->paid_amount;
+            $remainingBalance = max(0, round($totalDue - $paidAmount, 2));
+
+            // Collect the actual physical rooms before changing reservation status.
+            $reservationRooms = $reservation->reservationRooms
+                ->filter(fn ($reservationRoom) => $reservationRoom->room !== null)
+                ->values();
+
+            if ($reservationRooms->isEmpty()) {
+                return [
+                    'response' => response()->json([
+                        'status' => 'error',
+                        'message' => 'No physical room is assigned to this checked-in reservation.',
+                    ], 422),
+                ];
             }
 
-            // C. Finalize Invoice
-            if ($reservation->invoice) {
-                $reservation->invoice->update([
-                    'status'      => 'paid',
-                    'paid_at'     => now(),
-                    'total_amount' => $request->input('total_due', $reservation->invoice->total_amount),
-                ]);
-            }
-
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Check-out completed successfully! Room status set to cleaning.',
-                'data'    => [
+            // Settle any remaining balance at checkout.
+            if ($remainingBalance > 0 && $invoice) {
+                Payments::create([
+                    'invoice_id' => $invoice->id,
                     'reservation_id' => $reservation->id,
-                    'status'         => 'checked_out',
-                    'room_status'    => 'cleaning',
-                ]
+                    'payment_date' => now(),
+                    'amount' => $remainingBalance,
+                    'payment_method' => $request->input('payment_method', 'cash'),
+                    'payment_type' => 'remaining_balance',
+                    'status' => 'completed',
+                ]);
+            }
+
+            $reservation->update([
+                'status' => 'checked_out',
+                'paid_amount' => $totalDue,
+                'payment_status' => 'paid',
             ]);
+
+            if ($invoice) {
+                $invoice->update([
+                    'discount' => $discountAmount,
+                    'tax' => $vatAmount,
+                    'total_amount' => $totalDue,
+                    'status' => 'paid',
+                ]);
+            }
+
+            $createdTasks = [];
+            $roomsForBroadcast = [];
+
+            foreach ($reservationRooms as $reservationRoom) {
+                $reservationRoom->update([
+                    'actual_check_out' => now(),
+                    'status' => 'checked_out',
+                ]);
+
+                $room = $reservationRoom->room;
+
+                $room->update([
+                    'status' => 'cleaning',
+                ]);
+
+                $task = Housekeeping_tasks::create([
+                    'room_id' => $room->id,
+                    'assigned_to' => null,
+                    'task_type' => 'Checkout Clean',
+                    'status' => 'pending',
+                    'notes' => "Automatic checkout cleaning for reservation {$reservation->reservation_code}.",
+                ]);
+
+                $createdTasks[] = $task->load('room');
+                $roomsForBroadcast[] = $room->fresh();
+            }
+
+            // Broadcast only after the transaction has committed.
+            DB::afterCommit(function () use ($roomsForBroadcast, $createdTasks) {
+                foreach ($roomsForBroadcast as $room) {
+                    RoomStatusUpdated::dispatch($room);
+                }
+
+                foreach ($createdTasks as $task) {
+                    HousekeepingTaskCreated::dispatch($task);
+                }
+            });
+
+            return [
+                'response' => response()->json([
+                    'status' => 'success',
+                    'message' => 'Check-out completed successfully. Housekeeping task(s) created.',
+                    'data' => [
+                        'reservation_id' => $reservation->id,
+                        'reservation_code' => $reservation->reservation_code,
+                        'status' => 'checked_out',
+                        'room_status' => 'cleaning',
+                        'total_due' => $totalDue,
+                        'paid_amount' => $totalDue,
+                        'remaining_balance' => 0,
+                        'housekeeping_tasks_created' => count($createdTasks),
+                    ],
+                ]),
+            ];
         });
+
+        return $result['response'];
     }
 }
