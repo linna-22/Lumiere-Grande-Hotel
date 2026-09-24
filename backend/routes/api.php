@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CheckOutController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RoomTypeController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\HouseKeepingController;
@@ -82,13 +83,21 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+
+    Route::prefix('employees')->group(function () {
+        Route::get('/', [EmployeeController::class, 'index'])->name('employees.index');
+        Route::get('/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
+        Route::post('/', [EmployeeController::class, 'store'])->name('employees.store');
+        Route::put('/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
+        Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+    });
  
     // Guest Profile Management
     Route::get('/guest/profile', [GuestController::class, 'showProfile'])->name('guest.profile');
     Route::put('/guest/profile', [GuestController::class, 'updateProfile'])->name('guest.profile.update');
 
     // Admin & Staff Operations (Role Restricted)
-    Route::middleware('role:admin,receptionist')->prefix('admin')->group(function () {
+    Route::middleware('role:admin,receptionist,super_admin')->prefix('admin')->group(function () {
         
         Route::get('/user', [UserController::class, 'index'])->name('admin.user.index');
         Route::post('/user/create', [UserController::class, 'store'])->name('admin.user.store');
@@ -220,3 +229,4 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/admin/backup-now', [BackupController::class, 'triggerBackup']);
 });
+
