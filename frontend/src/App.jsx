@@ -31,6 +31,7 @@ import BookingSuccess from './pages/booking/BookingSuccess'
 import Invoices from './pages/invoices/Invoices'
 import Housekeeping from './pages/housekeeping/Housekeeping'
 import Settings from './pages/Settings'
+import Employees from './pages/employees/employees'
 
 import { setToken } from './api/client'
 import { useAuth } from './hooks/useAuth'
@@ -69,6 +70,7 @@ const pages = {
   'Users Add': AddUser,
   'Users View': ViewUser,
   'Users Edit': EditUser,
+  Employees,
 
   'Booking Success': BookingSuccess,
 }

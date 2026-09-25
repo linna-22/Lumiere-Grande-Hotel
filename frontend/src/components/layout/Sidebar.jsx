@@ -31,6 +31,7 @@ const navGroups = [
     label: 'User',
     items: [
       { label: 'Users', icon: Users },
+      { label: 'Employees', icon: Users },
       { label: 'Guests', icon: Users },
     ],
   },
