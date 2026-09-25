@@ -23,55 +23,57 @@ class RoomController extends Controller
      * Display a listing of the resource.
      */
 
-    public function exportExcel(){
-
-    try{
-
-    
-    $fileName = 'lumiere_hotel_rooms_' . now()->format('Y_m_d_His') . '.xlsx';
-
-    return Excel::download(new RoomsExport, $fileName);
-
-    }catch(\Exception $e){
-
-    return response()->json([
-        'message' => 'Error' .$e,
-
-    ], 500);
-    }
-
-
-    }
-
-    public function index(IndexRoomRequest $request) :JsonResponse
+    public function exportExcel()
     {
 
-    $filter = $request->validated();
+        try {
 
-    $count = Rooms::select('status', DB::raw('count(*) as count')) -> groupBy('status')->pluck('count', 'status')->toArray();
 
-    $summary = [
-        'total' => Rooms::count(),
-        'available' => $count['available'] ?? 0,
-        'occupied' => $count['occupied'] ?? 0,
-        'reserved' => $count['reserved'] ?? 0,
-        'cleaning' => $count['cleaning'] ?? $count['dirty'] ??0,
-        'maintenance' => $count['maintenance'] ?? 0
-    ];
+            $fileName = 'lumiere_hotel_rooms_' . now()->format('Y_m_d_His') . '.xlsx';
 
-    $room = Rooms::with('roomType.facilities')->filter($filter)->paginate($filter['per_page'] ?? 8);
-      // return RoomResource::collection($rooms);
-    return response()->json([
-        'summary' => $summary,
-        'data' => RoomResource::collection($room)->response()->getData()->data,
-        'meta' => [
-            'curren_page' => $room->currentPage(),
-            'last_page' => $room->lastPage(),
-            'per_page' => $room->perPage(),
-            'total' => $room->total()
-        ]
-    ]);
-    // $rooms = Rooms::with('roomType.facilities')->latest()->get();
+            return Excel::download(new RoomsExport, $fileName);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'message' => 'Error' . $e,
+
+            ], 500);
+        }
+
+
+    }
+
+    public function index(IndexRoomRequest $request): JsonResponse
+    {
+
+        $filter = $request->validated();
+
+        $count = Rooms::select('status', DB::raw('count(*) as count'))->groupBy('status')->pluck('count', 'status')->toArray();
+
+        $summary = [
+            'total' => Rooms::count(),
+            'available' => $count['available'] ?? 0,
+            'occupied' => $count['occupied'] ?? 0,
+            'reserved' => $count['reserved'] ?? 0,
+            'dirty' => $count['dirty'] ?? 0,
+            'cleaning' => $count['cleaning'] ?? 0,
+            'maintenance' => $count['maintenance'] ?? 0,
+        ];
+
+        $room = Rooms::with('roomType.facilities')->filter($filter)->paginate($filter['per_page'] ?? 8);
+        // return RoomResource::collection($rooms);
+        return response()->json([
+            'summary' => $summary,
+            'data' => RoomResource::collection($room)->response()->getData()->data,
+            'meta' => [
+                'curren_page' => $room->currentPage(),
+                'last_page' => $room->lastPage(),
+                'per_page' => $room->perPage(),
+                'total' => $room->total()
+            ]
+        ]);
+        // $rooms = Rooms::with('roomType.facilities')->latest()->get();
 
 
     }
@@ -84,11 +86,11 @@ class RoomController extends Controller
     {
         $data = $request->validated();
 
-        if($request->hasFile('image')){
+        if ($request->hasFile('image')) {
 
-        $uploadedFile = $request->file('image')->storeOnCloudinary('hotel/rooms');
-        $data['image_url'] = $uploadedFile->getSecurePath();
-        $data['cloudinary_id'] = $uploadedFile->getPublicId();
+            $uploadedFile = $request->file('image')->storeOnCloudinary('hotel/rooms');
+            $data['image_url'] = $uploadedFile->getSecurePath();
+            $data['cloudinary_id'] = $uploadedFile->getPublicId();
 
         }
 
@@ -106,13 +108,13 @@ class RoomController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        
+
         $room = Rooms::with('roomType.facilities')->findOrFail($id);
 
         return response()->json([
-            
-        'data' => new RoomResource($room)
-        
+
+            'data' => new RoomResource($room)
+
         ], 200);
 
     }
@@ -123,52 +125,52 @@ class RoomController extends Controller
     public function update(UpdateRoomRequest $request, string $id): JsonResponse
     {
 
-    try{
+        try {
 
-    $room = Rooms::findOrFail($id);
+            $room = Rooms::findOrFail($id);
 
-     $data = $request->validated();
+            $data = $request->validated();
 
-        if($request->hasFile('image')){
+            if ($request->hasFile('image')) {
 
-        if($room->cloudinary_id) {
+                if ($room->cloudinary_id) {
 
-            Cloudinary::destroy($room->cloudinary_id);
+                    Cloudinary::destroy($room->cloudinary_id);
 
+                }
+
+                $uploadedFile = $request->file('image')->storeOnCloudinary('hotel/rooms');
+
+                $data['image_url'] = $uploadedFile->getSecurePath();
+
+                $data['cloudinary_id'] = $uploadedFile->getPublicId();
+
+            }
+
+            $room->update($data);
+
+            return response()->json([
+
+                'message' => 'Room updated successfully',
+                'data' => new RoomResource($room->fresh()->load('roomType.facilities'))
+
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+
+            return response()->json([
+                'message' => 'Room not found',
+                'data' => null,
+            ], 404);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+
+                'message' => 'fail to update room',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $uploadedFile = $request->file('image')->storeOnCloudinary('hotel/rooms');
-        
-        $data['image_url'] = $uploadedFile->getSecurePath();
-
-        $data['cloudinary_id'] = $uploadedFile->getPublicId();
-
-        }
-
-        $room->update($data);
-
-        return response()->json([
-
-            'message' => 'Room updated successfully',
-            'data' => new RoomResource($room->fresh()->load('roomType.facilities'))
-
-        ], 200);
-
-    }catch(ModelNotFoundException $e){
-
-    return response()->json([
-        'message' => 'Room not found',
-        'data' => null,
-    ], 404);
-       
-    }  catch(Exception $e){
-
-    return response()->json([
-
-    'message' => 'fail to update room',
-    'error' => $e->getMessage()
-    ], 500);
-    }
 
     }
 
@@ -178,36 +180,36 @@ class RoomController extends Controller
     public function destroy(string $id): JsonResponse
     {
 
-    try{
+        try {
 
-    $room = Rooms::findOrFail($id);
-    
-        if($room->cloudinary_id){
+            $room = Rooms::findOrFail($id);
 
-            Cloudinary::destroy($room->cloudinary_id);
+            if ($room->cloudinary_id) {
+
+                Cloudinary::destroy($room->cloudinary_id);
+            }
+
+            $room->delete();
+
+            return response()->json([
+                'message' => 'Room deleted successfully'
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+
+            return response()->json([
+                'message' => 'Room not found',
+                'data' => null,
+
+            ], 404);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'message' => 'Failed to delete room',
+                'error' => $e->getMessage(),
+                'data' => null,
+            ], 500);
         }
-
-        $room->delete();
-
-        return response()->json([
-            'message' => 'Room deleted successfully'
-        ], 200);
-
-    }catch(ModelNotFoundException $e){
-
-    return response()->json([
-        'message' => 'Room not found',
-        'data' => null,
-
-    ], 404);
-
-    }catch(Exception $e){
-
-    return response()->json([
-        'message' => 'Failed to delete room',
-        'error' => $e->getMessage(),
-        'data' => null,
-    ], 500);
-    }
     }
 }
