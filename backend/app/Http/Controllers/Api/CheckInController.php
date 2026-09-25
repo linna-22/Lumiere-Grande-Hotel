@@ -8,6 +8,8 @@ use App\Models\Guests;
 use App\Models\Reservation_rooms;
 use App\Models\Reservations;
 use App\Models\Rooms;
+use App\Models\Room_types;
+use App\Models\Invoices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -18,7 +20,7 @@ class CheckInController extends Controller
     {
         $search = $request->input('query');
 
-        $reservations = Reservations::with(['guest', 'reservationRooms.room', 'reservationRooms.roomType'])
+        $reservations = Reservations::with(['guest', 'invoice', 'reservationRooms.room', 'reservationRooms.roomType'])
             ->whereIn('status', ['confirmed', 'pending'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -151,16 +153,62 @@ class CheckInController extends Controller
                 ->orderBy('id')
                 ->first();
 
+            // Walk-in reservations start without a reservation_rooms row.
+            // Create the row from the selected physical room and its room type.
             if (!$reservationRoom) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No reserved room is available for this reservation.',
-                ], 422);
-            }
+                $roomType = Room_types::findOrFail($room->room_type_id);
+                $nights = max(1, (int) round((strtotime($reservation->check_out_date) - strtotime($reservation->check_in_date)) / 86400));
+                $nightlyRate = (float) $roomType->base_price;
+                $subtotal = $nightlyRate * $nights;
 
-            $reservationRoom->update([
-                'room_id' => $room->id,
-            ]);
+                $reservationRoom = $reservation->reservationRooms()->create([
+                    'room_type_id' => $roomType->id,
+                    'room_id' => $room->id,
+                    'nightly_rate' => $nightlyRate,
+                    'status' => 'reserved',
+                ]);
+
+                $reservation->update([
+                    'total_amount' => $subtotal,
+                    'paid_amount' => 0,
+                    'payment_status' => 'unpaid',
+                ]);
+
+                $invoice = Invoices::firstOrCreate(
+                    ['reservation_id' => $reservation->id],
+                    [
+                        'invoice_no' => 'INV-' . strtoupper(Str::random(8)),
+                        'guest_id' => $reservation->guest_id,
+                        'invoice_date' => now(),
+                        'subtotal' => $subtotal,
+                        'tax' => 0,
+                        'discount' => 0,
+                        'total_amount' => $subtotal,
+                        'status' => 'unpaid',
+                    ]
+                );
+
+                $invoice->update([
+                    'guest_id' => $reservation->guest_id,
+                    'subtotal' => $subtotal,
+                    'total_amount' => $subtotal,
+                    'status' => 'unpaid',
+                ]);
+
+                if (!$invoice->items()->where('item_type', 'room_charge')->exists()) {
+                    $invoice->items()->create([
+                        'item_type' => 'room_charge',
+                        'description' => "Walk-in for {$nights} night(s)",
+                        'quantity' => $nights,
+                        'unit_price' => $nightlyRate,
+                        'amount' => $subtotal,
+                    ]);
+                }
+            } else {
+                $reservationRoom->update([
+                    'room_id' => $room->id,
+                ]);
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -169,6 +217,7 @@ class CheckInController extends Controller
                     'guest',
                     'reservationRooms.room',
                     'reservationRooms.roomType',
+                    'invoice',
                 ]),
             ]);
         });

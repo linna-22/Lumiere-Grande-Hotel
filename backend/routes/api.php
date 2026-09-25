@@ -192,15 +192,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::middleware(['auth:sanctum'])->group(function () {
 
-Route::prefix('check-in')->group(function () {
-    
-    Route::get('/search', [CheckInController::class, 'searchOrInit']);
-    Route::post('/walk-in', [CheckInController::class, 'createWalkIn']);
-    Route::post('/{id}/verify-guest', [CheckInController::class, 'verifyGuest']);
-    Route::post('/{id}/assign-room', [CheckInController::class, 'assignRoom']);
-    
-    Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
-});
+    Route::prefix('check-in')->group(function () {
+        Route::get('/search', [CheckInController::class, 'searchOrInit']);
+        Route::post('/walk-in', [CheckInController::class, 'createWalkIn']);
+        Route::post('/{id}/verify-guest', [CheckInController::class, 'verifyGuest']);
+        Route::post('/{id}/assign-room', [CheckInController::class, 'assignRoom']);
+        Route::post('/reservation/{reservationCode}/check-in', [ReservationController::class, 'settleAndCheck']);
+    });
 });
 
 
@@ -220,9 +218,12 @@ Route::middleware(['auth:sanctum'])->prefix('check-out')->group(function () {
 Route::get('/public-settings', [SettingsController::class, 'getPublicInfo']);
 
 // 2. PROTECTED ADMIN ROUTES (Admin updates settings)
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware([
+    'auth:sanctum',
+    'role:admin,super_admin',
+])->prefix('admin')->group(function () {
     Route::get('/settings', [SettingsController::class, 'index']);
-    Route::post('/settings', [SettingsController::class, 'update']);
+    Route::post('/settings', [SettingsController::class, 'update']);    
     Route::post('/settings/logo', [SettingsController::class, 'uploadLogo']);
 });
 
