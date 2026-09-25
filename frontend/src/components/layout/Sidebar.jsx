@@ -4,6 +4,7 @@ import {
   CalendarDays,
   BedDouble,
   Users,
+  UserRound,
   LogIn,
   DoorOpen,
   Sparkles,
@@ -32,6 +33,7 @@ const navGroups = [
     label: 'User',
     items: [
       { label: 'Users', icon: Users },
+      { label: 'Employees', icon: UserRound },
       { label: 'Guests', icon: Users },
     ],
   },

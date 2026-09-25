@@ -97,7 +97,7 @@ export default function ReservationsTable({
                 </th>
               ))}
 
-              <th className="text-right font-medium px-4 py-3 whitespace-nowrap">
+              <th className="text-center font-medium px-4 py-3 whitespace-nowrap">
                 Actions
               </th>
             </tr>

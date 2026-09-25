@@ -14,6 +14,7 @@ import EditReservationModal from "../../components/reservations/EditReservationM
 import CancelReservationModal from "../../components/reservations/CancelReservationModal";
 
 import { deleteReservation } from "../../api/reservationsAdmin";
+import ErrorModal from "../../components/common/ErrorModal";
 
 const PAGE_SIZE = 10;
 const FETCH_SIZE = 100;
@@ -31,16 +32,14 @@ const tabToStatuses = {
 // ==========================================================
 
 async function fetchAllReservations() {
-  const first = await apiFetch(
-    `/reservations?per_page=${FETCH_SIZE}&page=1`
-  );
+  const first = await apiFetch(`/reservations?per_page=${FETCH_SIZE}&page=1`);
 
   let items = first.data?.data ?? [];
   const apiLastPage = first.data?.last_page ?? 1;
 
   for (let p = 2; p <= apiLastPage; p += 1) {
     const res = await apiFetch(
-      `/reservations?per_page=${FETCH_SIZE}&page=${p}`
+      `/reservations?per_page=${FETCH_SIZE}&page=${p}`,
     );
 
     items = items.concat(res.data?.data ?? []);
@@ -63,15 +62,29 @@ export default function Reservations({ onNavigate }) {
   const [allRows, setAllRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorModal, setErrorModal] = useState({
+    open: false,
+    title: "Something went wrong",
+    message: "",
+  });
 
+  // ========================================================
   // Edit modal
+  // ========================================================
+
   const [editingReservation, setEditingReservation] = useState(null);
 
+  // ========================================================
   // Cancel modal
+  // ========================================================
+
   const [reservationToCancel, setReservationToCancel] = useState(null);
 
   // Loading state for cancellation
   const [cancellingId, setCancellingId] = useState(null);
+
+  // Success state for cancellation
+  const [cancelSuccess, setCancelSuccess] = useState(false);
 
   // ========================================================
   // Load reservations
@@ -88,9 +101,7 @@ export default function Reservations({ onNavigate }) {
     } catch (err) {
       console.error("Failed to load reservations:", err);
 
-      setError(
-        err?.message || "Failed to load reservations."
-      );
+      setError(err?.message || "Failed to load reservations.");
     } finally {
       setLoading(false);
     }
@@ -105,8 +116,7 @@ export default function Reservations({ onNavigate }) {
   // ========================================================
 
   const stats = useMemo(() => {
-    const count = (key) =>
-      allRows.filter((r) => r.statusKey === key).length;
+    const count = (key) => allRows.filter((r) => r.statusKey === key).length;
 
     return {
       total: allRows.length,
@@ -126,8 +136,7 @@ export default function Reservations({ onNavigate }) {
     const q = search.trim().toLowerCase();
 
     return allRows.filter((r) => {
-      const matchesTab =
-        !statuses || statuses.includes(r.statusKey);
+      const matchesTab = !statuses || statuses.includes(r.statusKey);
 
       const matchesQuery =
         !q ||
@@ -144,16 +153,13 @@ export default function Reservations({ onNavigate }) {
   // Pagination
   // ========================================================
 
-  const lastPage = Math.max(
-    1,
-    Math.ceil(filtered.length / PAGE_SIZE)
-  );
+  const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
   const currentPage = Math.min(page, lastPage);
 
   const pageRows = filtered.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
 
   const paginationMeta = {
@@ -168,9 +174,15 @@ export default function Reservations({ onNavigate }) {
   // ========================================================
 
   const reloadReservations = async () => {
-    const items = await fetchAllReservations();
+    try {
+      const items = await fetchAllReservations();
 
-    setAllRows(items.map(normalizeReservation));
+      setAllRows(items.map(normalizeReservation));
+    } catch (err) {
+      console.error("Failed to reload reservations:", err);
+
+      setError(err?.message || "Failed to reload reservations.");
+    }
   };
 
   // ========================================================
@@ -179,9 +191,7 @@ export default function Reservations({ onNavigate }) {
 
   const handleEditReservation = (reservation) => {
     if (!reservation?.dbId) {
-      setError(
-        "This reservation does not have a valid database ID."
-      );
+      setError("This reservation does not have a valid database ID.");
       return;
     }
 
@@ -201,16 +211,16 @@ export default function Reservations({ onNavigate }) {
 
   const handleCancelReservation = (reservation) => {
     if (!reservation?.dbId) {
-      setError(
-        "This reservation does not have a valid database ID."
-      );
+      setError("This reservation does not have a valid database ID.");
       return;
     }
 
     setError("");
 
-    // Only open our React modal.
-    // NO window.confirm()
+    // Reset success state when opening a new cancellation
+    setCancelSuccess(false);
+
+    // Open confirmation modal
     setReservationToCancel(reservation);
   };
 
@@ -219,34 +229,52 @@ export default function Reservations({ onNavigate }) {
   // ========================================================
 
   const confirmCancelReservation = async () => {
-    if (!reservationToCancel?.dbId) {
-      return;
-    }
+    if (!reservationToCancel?.dbId) return;
 
     try {
       setCancellingId(reservationToCancel.dbId);
       setError("");
 
       await deleteReservation(reservationToCancel.dbId);
-
-      // Close modal after successful cancellation
-      setReservationToCancel(null);
-
-      // Reload table
       await reloadReservations();
-    } catch (err) {
-      console.error(
-        "Failed to cancel reservation:",
-        err
-      );
 
-      setError(
-        err?.message ||
-          "Failed to cancel reservation."
-      );
+      setCancelSuccess(true);
+    } catch (err) {
+      console.error("Failed to cancel reservation:", err);
+
+      // Close the cancel modal first
+      setReservationToCancel(null);
+      setCancelSuccess(false);
+      setCancellingId(null);
+
+      // Then show the error modal
+      setErrorModal({
+        open: true,
+        title: "Cancellation Failed",
+        message:
+          err?.message || "Failed to cancel the reservation. Please try again.",
+      });
+
+      return;
     } finally {
       setCancellingId(null);
     }
+  };
+  const closeErrorModal = () => {
+    setErrorModal({
+      open: false,
+      title: "Something went wrong",
+      message: "",
+    });
+  };
+
+  // ========================================================
+  // CLOSE CANCEL MODAL
+  // ========================================================
+
+  const closeCancelModal = () => {
+    setReservationToCancel(null);
+    setCancelSuccess(false);
   };
 
   // ========================================================
@@ -289,13 +317,9 @@ export default function Reservations({ onNavigate }) {
         <main className="mx-auto max-w-[1400px] p-4 sm:p-6">
           <PageHeader onNavigate={onNavigate} />
 
-          <StatsCards
-            stats={loading ? null : stats}
-          />
+          <StatsCards stats={loading ? null : stats} />
 
-          <FilterTabs
-            onChange={handleTabChange}
-          />
+          <FilterTabs onChange={handleTabChange} />
 
           <ReservationsTable
             rows={pageRows}
@@ -324,9 +348,7 @@ export default function Reservations({ onNavigate }) {
         {editingReservation && (
           <EditReservationModal
             reservation={editingReservation}
-            onClose={() =>
-              setEditingReservation(null)
-            }
+            onClose={() => setEditingReservation(null)}
             onSaved={handleReservationSaved}
           />
         )}
@@ -338,14 +360,21 @@ export default function Reservations({ onNavigate }) {
         {reservationToCancel && (
           <CancelReservationModal
             reservation={reservationToCancel}
-            loading={
-              cancellingId ===
-              reservationToCancel?.dbId
-            }
-            onClose={() =>
-              setReservationToCancel(null)
-            }
+            loading={cancellingId === reservationToCancel?.dbId}
+            success={cancelSuccess}
+            onClose={closeCancelModal}
             onConfirm={confirmCancelReservation}
+          />
+        )}
+        {/* ==================================================
+            Error Modal
+        ================================================== */}
+
+        {errorModal.open && (
+          <ErrorModal
+            title={errorModal.title}
+            message={errorModal.message}
+            onClose={closeErrorModal}
           />
         )}
       </div>
