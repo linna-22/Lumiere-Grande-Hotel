@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 
-import { apiFetch } from "../../api/client";
+import { apiFetch, apiDownload } from "../../api/client";
 import Sidebar from "../../components/layout/Sidebar";
 import TopBar from "../../components/layout/TopBar";
 import Pagination from "../../components/common/Pagination";
@@ -29,6 +29,33 @@ export default function InvoicesPage({ onNavigate }) {
   const [error, setError] = useState("");
 
   const [selectedId, setSelectedId] = useState(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+
+      const blob = await apiDownload("/invoices/export/excel");
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "lumiere_hotel_invoices.xlsx";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export Invoices Excel error:", error);
+
+      alert(error.message || "Failed to export invoices.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Debounce the search box so we don't hit the API on every keystroke
   useEffect(() => {
@@ -51,7 +78,7 @@ export default function InvoicesPage({ onNavigate }) {
       try {
         const params = new URLSearchParams({ page });
         if (search) params.set("search", search);
-        if (status) params.set("status", status); 
+        if (status) params.set("status", status);
 
         const res = await apiFetch(`/invoices?${params.toString()}`);
         if (cancelled) return;
@@ -99,7 +126,7 @@ export default function InvoicesPage({ onNavigate }) {
     return () => {
       cancelled = true;
     };
-  }, [page, search, status])
+  }, [page, search, status]);
 
   const handlePrintRow = async (inv) => {
     try {
@@ -126,8 +153,8 @@ export default function InvoicesPage({ onNavigate }) {
 
         <main className="flex-1 p-4 sm:p-6">
           <InvoicesHeader
-            onNewInvoice={() => onNavigate?.("NewInvoice")}
-            // onExportPdf / onExportExcel: wire up once the backend export routes exist
+            onExportExcel={handleExportExcel}
+            exporting={exporting}
           />
 
           <InvoiceStatsCards summary={summary} />

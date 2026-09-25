@@ -1,13 +1,14 @@
-import { FileDown, FileSpreadsheet, Printer, Plus } from 'lucide-react'
+import { FileDown, FileSpreadsheet, Printer, Plus } from "lucide-react";
 
 export default function InvoicesHeader({
   onExportPdf,
   onExportExcel,
   onPrint,
   onNewInvoice,
+  exporting = false,
 }) {
   const secondaryBtn =
-    'flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors'
+    "flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors";
 
   return (
     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -21,21 +22,28 @@ export default function InvoicesHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 shrink-0">
-        <button onClick={() => onExportPdf?.()} className={secondaryBtn}>
+        {/* <button onClick={() => onExportPdf?.()} className={secondaryBtn}>
           <FileDown size={15} />
           Export PDF
-        </button>
+        </button> */}
 
-        <button onClick={() => onExportExcel?.()} className={secondaryBtn}>
+        <button
+          onClick={onExportExcel}
+          disabled={exporting}
+          className={`${secondaryBtn} ${
+            exporting ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
           <FileSpreadsheet size={15} />
-          Export Excel
+
+          {exporting ? "Exporting..." : "Export Excel"}
         </button>
 
-        <button onClick={() => (onPrint ? onPrint() : window.print())} className={secondaryBtn}>
+        {/* <button onClick={() => (onPrint ? onPrint() : window.print())} className={secondaryBtn}>
           <Printer size={15} />
           Print
-        </button>
-{/* 
+        </button> */}
+        {/* 
         <button
           onClick={() => onNewInvoice?.()}
           className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold text-sm px-3.5 py-2 rounded-lg transition-colors"
@@ -45,5 +53,5 @@ export default function InvoicesHeader({
         </button> */}
       </div>
     </div>
-  )
+  );
 }
