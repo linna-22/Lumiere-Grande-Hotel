@@ -15,6 +15,7 @@ import Sidebar from "../../components/layout/Sidebar";
 import TopBar from "../../components/layout/TopBar";
 import { listGuests } from "../../api/admin";
 import { ApiError, apiDownload } from "../../api/client";
+import Pagination from "../../components/common/Pagination";
 
 function initials(name) {
   return (name || "?")
@@ -72,6 +73,7 @@ export default function Guests({ onNavigate }) {
       const json = await listGuests({
         ...(search ? { search } : {}),
         page,
+        per_page: 8,
       });
       // Laravel's paginate() returns { data: [...], current_page, last_page, total, ... }
       setGuests((json.data ?? []).map(mapGuest));
@@ -158,10 +160,10 @@ export default function Guests({ onNavigate }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+              {/* <button className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
                 <FileDown size={15} />
                 Export PDF
-              </button>
+              </button> */}
               <button
                 onClick={handleExportExcel}
                 disabled={exporting}
@@ -170,10 +172,10 @@ export default function Guests({ onNavigate }) {
                 <FileSpreadsheet size={15} />
                 {exporting ? "Exporting..." : "Export Excel"}
               </button>
-              <button className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+              {/* <button className="flex items-center gap-1.5 bg-base-800 border border-base-border hover:bg-base-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
                 <Printer size={15} />
                 Print
-              </button>
+              </button> */}
               <button
                 onClick={() => onNavigate?.("Guests Add")}
                 className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold text-sm px-3.5 py-2 rounded-lg transition-colors"
@@ -206,7 +208,7 @@ export default function Guests({ onNavigate }) {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search..."
+                  placeholder="Search by guest's name..."
                   className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
                 />
               </div>
@@ -321,31 +323,12 @@ export default function Guests({ onNavigate }) {
             </div>
 
             {/* Pagination */}
-            {pagination.last_page > 1 && (
-              <div className="flex items-center justify-end gap-2 p-4 border-t border-base-border">
-                <button
-                  disabled={pagination.current_page <= 1}
-                  onClick={() =>
-                    fetchGuests(query, pagination.current_page - 1)
-                  }
-                  className="px-3 py-1.5 text-sm rounded-md bg-base-800 border border-base-border text-slate-300 disabled:opacity-40"
-                >
-                  Prev
-                </button>
-                <span className="text-sm text-slate-400">
-                  Page {pagination.current_page} of {pagination.last_page}
-                </span>
-                <button
-                  disabled={pagination.current_page >= pagination.last_page}
-                  onClick={() =>
-                    fetchGuests(query, pagination.current_page + 1)
-                  }
-                  className="px-3 py-1.5 text-sm rounded-md bg-base-800 border border-base-border text-slate-300 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={pagination.current_page}
+              meta={pagination}
+              onPageChange={(page) => fetchGuests(query, page)}
+              itemLabel="guests"
+            />
           </div>
         </main>
       </div>

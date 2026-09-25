@@ -12,30 +12,24 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class GuestController extends Controller
 {
-
     public function exportExcel()
     {
-
         try {
-
-
             $fileName = 'lumiere_hotel_guests_' . now()->format('Y_m_d_His') . '.xlsx';
 
             return Excel::download(new GuestsExport, $fileName);
         } catch (\Exception $e) {
-
             return response()->json([
                 'message' => 'Error' . $e,
-
             ], 500);
         }
     }
+
     public function showProfile(Request $request)
     {
         $guest = $request->user()->guest;
 
         if (!$guest) {
-
             return response()->json(['message' => 'Guest profile not found.'], 404);
         }
 
@@ -52,33 +46,35 @@ class GuestController extends Controller
         }
 
         $validated = $request->validate([
-            'first_name'            => 'sometimes|string|max:100',
-            'last_name'             => 'sometimes|string|max:100',
-            'email'                 => [
+            'first_name' => 'sometimes|string|max:100',
+            'last_name' => 'sometimes|string|max:100',
+            'email' => [
                 'sometimes',
                 'email',
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'phone'                 => 'sometimes|string|max:20',
-            'address'               => 'nullable|string',
-            'identification_type'   => 'nullable|string|max:155',
+            'phone' => 'sometimes|string|max:20',
+            'address' => 'nullable|string',
+            'identification_type' => 'nullable|string|max:155',
             'identification_number' => 'nullable|string|max:155',
-            'nationality'            => 'nullable|string|max:50',
+            'nationality' => 'nullable|string|max:50',
         ]);
 
         $guest->update($validated);
 
         if (isset($validated['first_name']) || isset($validated['last_name'])) {
-
             $user->update([
-                'name' => trim(($validated['first_name'] ?? $guest->first_name) . ' ' . ($validated['last_name'] ?? $guest->last_name))
+                'name' => trim(
+                    ($validated['first_name'] ?? $guest->first_name) . ' ' .
+                    ($validated['last_name'] ?? $guest->last_name)
+                ),
             ]);
         }
 
         return response()->json([
             'message' => 'Guest profile updated successfully.',
-            'data'    => $guest
+            'data' => $guest,
         ], 200);
     }
 
@@ -92,13 +88,20 @@ class GuestController extends Controller
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhereHas('user', function ($uq) use ($search) {
-
-                        $uq->where('email', 'like', "%{$search}");
+                        $uq->where('email', 'like', "%{$search}%");
                     });
             });
         }
 
-        $guests = $query->latest()->paginate(15);
+        // Pagination
+        $perPage = (int) $request->input('per_page', 8);
+
+        // Keep the value safe if someone sends an invalid/very large number.
+        $perPage = max(1, min($perPage, 100));
+
+        $guests = $query
+            ->latest()
+            ->paginate($perPage);
 
         return response()->json($guests, 200);
     }
@@ -106,21 +109,21 @@ class GuestController extends Controller
     public function storeWalkin(Request $request)
     {
         $validated = $request->validate([
-            'first_name'            => 'required|string|max:100',
-            'last_name'             => 'required|string|max:100',
-            'email'                 => 'nullable|email|unique:guests,email',
-            'phone'                 => 'required|string|max:20',
-            'address'               => 'nullable|string',
-            'identification_type'   => 'nullable|string|max:155',
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'email' => 'nullable|email|unique:guests,email',
+            'phone' => 'required|string|max:20',
+            'address' => 'nullable|string',
+            'identification_type' => 'nullable|string|max:155',
             'identification_number' => 'nullable|string|max:155',
-            'nationality'           => 'nullable|string|max:50',
+            'nationality' => 'nullable|string|max:50',
         ]);
 
         $guest = Guests::create(array_merge($validated, ['user_id' => null]));
 
         return response()->json([
             'message' => 'Walk-in guest created successfully.',
-            'data'    => $guest
+            'data' => $guest,
         ], 201);
     }
 
@@ -135,4 +138,3 @@ class GuestController extends Controller
         return response()->json(['data' => $guest], 200);
     }
 }
-// asdasdad
