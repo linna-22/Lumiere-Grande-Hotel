@@ -355,3 +355,52 @@ For logo We are store on cloundinary with the same Room image
 
 ----------------------------------------------------------------------
 composer require irazasyed/telegram-bot-sdk
+
+<!-- ==================Telegram bot=========================== -->
+
+Frontend Implementation Overview
+1. API Endpoint Details
+URL: /api/admin/backup-now
+
+HTTP Method: POST
+
+Headers Required:
+
+Authorization: Bearer <SANCTUM_TOKEN>
+
+Accept: application/json
+
+Exact Steps for Frontend Developers
+Step 1: User Action (Click Event)
+When the admin clicks the "Backup Now" button:
+
+Immediately update the button UI to a loading state (disable the button to prevent duplicate clicks).
+
+Change button text to: "Exporting & Uploading to Telegram..." with a spinner.
+
+Step 2: API Call Handling
+Database exports and uploads can take 5 to 15 seconds.
+
+Ensure the HTTP client (Axios/Fetch) timeout is set to at least 60 seconds for this request so it doesn't drop prematurely.
+
+Step 3: Response Handling
+On Success (status 200):
+
+Display a success alert/toast: "Database backup successfully created and uploaded to Telegram!"
+
+Re-enable the button.
+
+On Error (status 500 or network failure):
+
+Extract the error message from error.response.data.message.
+
+Display an error alert/toast: "Backup failed: [Server Error Message]".
+
+Re-enable the button so the admin can try again.
+-------------------------------------------------------------
+I/UX Best Practices for the Frontend Team
+Prevent Double Submission: Ensure disabled={isLoading} is set on the button immediately upon click.
+
+Clear Feedback: Since this action sends a file to Telegram, state clearly in the UI: "The backup file will be delivered directly to your Telegram notification channel."
+
+Non-blocking UX: The admin can navigate away to other pages after triggering the backup, but if they stay on the page, the spinner should remain until the server responds.

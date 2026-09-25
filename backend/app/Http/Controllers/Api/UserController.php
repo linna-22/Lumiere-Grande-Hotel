@@ -82,6 +82,8 @@ public function me(Request $request): JsonResponse
             'role'     => ['required', Rule::in(['admin', 'super_admin', 'manager', 'cashier', 'receptionist', 'customer'])],
         ]);
 
+        $this->authorize('create', User::class);
+
         $user = User::create([
             'name'     => $validated['name'],
             'email'    => strtolower($validated['email']),
@@ -107,6 +109,8 @@ public function me(Request $request): JsonResponse
     
     public function update(Request $request, User $user): JsonResponse
     {
+      $this->authorize('update', $user);
+
         $validated = $request->validate([
             'name'     => 'sometimes|string|max:255',
             'email'    => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($user->id)],
@@ -115,6 +119,20 @@ public function me(Request $request): JsonResponse
             'role'     => ['sometimes', Rule::in(['admin', 'super_admin', 'manager', 'cashier', 'receptionist', 'customer'])],
         ]);
 
+        if (isset($validated['role'])) {
+            $currentUserRole = $request->user()->role;
+
+            // Non-super-admins cannot assign 'super_admin' or their own rank
+            if ($currentUserRole !== 'super_admin') {
+                if ($validated['role'] === 'super_admin' || $validated['role'] === $currentUserRole) {
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => 'You cannot assign a role equal to or higher than your own.'
+                    ], 403);
+                }
+            }
+        }
+
         if (isset($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         }
@@ -122,6 +140,8 @@ public function me(Request $request): JsonResponse
         if (isset($validated['email'])) {
             $validated['email'] = strtolower($validated['email']);
         }
+
+     
 
         $user->update($validated);
 
@@ -139,6 +159,15 @@ public function me(Request $request): JsonResponse
                 'message' => 'Action denied. You cannot delete your own active account.'
             ], 403);
         }
+
+        if ($user->role === 'super_admin') {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Super Admin accounts cannot be deleted.'
+        ], 403);
+    }
+
+        $this->authorize('delete', $user);
 
         $user->tokens()->delete();
         $user->delete();
