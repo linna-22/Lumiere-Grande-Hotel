@@ -31,11 +31,10 @@ import BookingSuccess from './pages/booking/BookingSuccess'
 import Invoices from './pages/invoices/Invoices'
 import Housekeeping from './pages/housekeeping/Housekeeping'
 import Settings from './pages/Settings'
-import Employees from './pages/employees/employees'
 
 import { setToken } from './api/client'
 import { useAuth } from './hooks/useAuth'
-import RealtimeNotifications from './components/common/RealtimeNotifications'
+import { AuthProvider } from './context/AuthContext'
 
 const pages = {
   Dashboard,
@@ -70,7 +69,6 @@ const pages = {
   'Users Add': AddUser,
   'Users View': ViewUser,
   'Users Edit': EditUser,
-  Employees,
 
   'Booking Success': BookingSuccess,
 }
@@ -129,20 +127,12 @@ export default function App() {
     resolveOAuthCallback()
   }, [])
 
-  /**
-   * Decide which page to display after authentication
-   * has finished loading.
-   */
   useEffect(() => {
     if (loading) {
       return
     }
 
     if (user) {
-      /**
-       * Only automatically redirect to Dashboard when
-       * the application is currently on a public auth page.
-       */
       setPage((currentPage) => {
         if (PUBLIC_PAGES.includes(currentPage)) {
           return 'Dashboard'
@@ -171,13 +161,6 @@ export default function App() {
       setNavigationData(data)
     }
   }
-
-  /**
-   * Don't render Login/Dashboard before we know whether
-   * an existing token is valid.
-   *
-   * This prevents the "refresh -> Login" problem.
-   */
   if (loading) {
     return (
       <div
@@ -204,10 +187,6 @@ export default function App() {
     )
   }
 
-  /**
-   * Never allow protected pages to render without
-   * an authenticated user.
-   */
   if (!user && !PUBLIC_PAGES.includes(page)) {
     return <Login auth={auth} onNavigate={handleNavigate} />
   }
@@ -215,12 +194,12 @@ export default function App() {
   const Page = pages[page] || Login
 
   return (
-    <>
+    <AuthProvider auth={auth}>
       <Page
-      auth={auth}
-      onNavigate={handleNavigate}
+        auth={auth}
+        onNavigate={handleNavigate}
         {...navigationData}
       />
-    </>
+    </AuthProvider>
   )
 }

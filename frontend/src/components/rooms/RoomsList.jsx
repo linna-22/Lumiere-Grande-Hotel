@@ -3,9 +3,10 @@ import { Pencil, Trash2 } from "lucide-react";
 const statusStyles = {
   Available: "bg-emerald-500/15 text-emerald-400",
   Occupied: "bg-sky-500/15 text-sky-400",
-  Dirty: "bg-amber-500/15 text-amber-400",
+  Dirty: "bg-yellow-500 text-black",
   Maintenance: "bg-rose-500/15 text-rose-400",
   Reserved: "bg-yellow-500/15 text-yellow-400",
+  Cleaning: "bg-red-500 text-white",
 };
 
 function formatPrice(n) {

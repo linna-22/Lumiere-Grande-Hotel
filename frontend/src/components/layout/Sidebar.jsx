@@ -9,13 +9,14 @@ import {
   Sparkles,
   FileText,
   Settings,
-  LogOut,
   X,
   ChevronLeft,
   Bed,
 } from 'lucide-react'
 
 import { useHotelSettings } from '../../context/HotelSettingsContext'
+import { useAuthContext } from '../../context/AuthContext'
+import { canViewSidebarItem } from '../../utils/permissions'
 
 const navGroups = [
   {
@@ -31,7 +32,6 @@ const navGroups = [
     label: 'User',
     items: [
       { label: 'Users', icon: Users },
-      { label: 'Employees', icon: Users },
       { label: 'Guests', icon: Users },
     ],
   },
@@ -59,6 +59,7 @@ export default function Sidebar({
   // ==========================================================
 
   const { settings } = useHotelSettings()
+  const { user } = useAuthContext()
 
   const hotelName =
     settings?.hotel_name || 'Lumiere Grande Hotel'
@@ -226,6 +227,10 @@ export default function Sidebar({
 
                 {group.items.map(
                   ({ label, icon: Icon, badge }) => {
+                    if (!canViewSidebarItem(user?.role, label)) {
+                      return null
+                    }
+
                     const isActive =
                       label === active
 
@@ -322,51 +327,51 @@ export default function Sidebar({
               SETTINGS
           =================================================== */}
 
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              handleNavigate('Settings')
-            }}
-            title={
-              collapsed
-                ? 'Settings'
-                : undefined
-            }
-            className={`
-              flex items-center gap-3
-              px-3 py-2.5
-              rounded-lg
-              text-sm font-medium
-              transition-colors
-
-              ${
-                active === 'Settings'
-                  ? 'bg-amber-400 text-base-950'
-                  : 'text-slate-400 hover:bg-base-800 hover:text-slate-200'
+          {canViewSidebarItem(user?.role, 'Settings') && (
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                handleNavigate('Settings')
+              }}
+              title={
+                collapsed
+                  ? 'Settings'
+                  : undefined
               }
+              className={`
+                flex items-center gap-3
+                px-3 py-2.5
+                rounded-lg
+                text-sm font-medium
+                transition-colors
 
-              ${collapsed ? 'justify-center' : ''}
-            `}
-          >
+                ${
+                  active === 'Settings'
+                    ? 'bg-amber-400 text-base-950'
+                    : 'text-slate-400 hover:bg-base-800 hover:text-slate-200'
+                }
 
-            <Settings
-              size={18}
-              strokeWidth={2}
-              className="shrink-0"
-            />
+                ${collapsed ? 'justify-center' : ''}
+              `}
+            >
+              <Settings
+                size={18}
+                strokeWidth={2}
+                className="shrink-0"
+              />
 
-            {!collapsed && (
-              <span>Settings</span>
-            )}
-
-          </a>
+              {!collapsed && (
+                <span>Settings</span>
+              )}
+            </a>
+          )}
 
           {/* ==================================================
               LOGOUT
           =================================================== */}
 
-          <a
+          {/* <a
             href="#"
             onClick={(e) => {
               e.preventDefault()
@@ -403,7 +408,7 @@ export default function Sidebar({
               <span>Logout</span>
             )}
 
-          </a>
+          </a> */}
 
         </div>
 
