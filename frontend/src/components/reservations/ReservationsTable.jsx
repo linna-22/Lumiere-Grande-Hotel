@@ -9,7 +9,6 @@ const columns = [
   'Nights',
   'Status',
   'Payment',
-  'Source',
   'Amount',
 ]
 
@@ -33,13 +32,13 @@ const money = (n) =>
     maximumFractionDigits: 2,
   })}`
 
-const initials = (name = '') =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0].toUpperCase())
-    .join('') || 'G'
+// const initials = (name = '') =>
+//   name
+//     .split(' ')
+//     .filter(Boolean)
+//     .slice(0, 2)
+//     .map((p) => p[0].toUpperCase())
+//     .join('') || 'G'
 
 export default function ReservationsTable({
   rows = [],
@@ -66,7 +65,7 @@ export default function ReservationsTable({
             type="text"
             value={search}
             onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder="Search by code, guest name, email..."
+            placeholder="Search by ID, guest name, email..."
             className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
           />
         </div>
@@ -128,9 +127,9 @@ export default function ReservationsTable({
                   {/* Guest */}
                   <td className="px-4 py-4 align-top">
                     <div className="flex items-center gap-2.5 min-w-[180px]">
-                      <div className="w-8 h-8 rounded-full bg-amber-400/15 text-amber-400 text-xs font-semibold flex items-center justify-center shrink-0">
+                      {/* <div className="w-8 h-8 rounded-full bg-amber-400/15 text-amber-400 text-xs font-semibold flex items-center justify-center shrink-0">
                         {initials(r.guest)}
-                      </div>
+                      </div> */}
 
                       <div className="leading-tight min-w-0">
                         <p className="text-white font-medium truncate">
@@ -195,9 +194,9 @@ export default function ReservationsTable({
                   </td>
 
                   {/* Source */}
-                  <td className="px-4 py-4 align-top text-slate-300 whitespace-nowrap">
+                  {/* <td className="px-4 py-4 align-top text-slate-300 whitespace-nowrap">
                     {r.source}
-                  </td>
+                  </td> */}
 
                   {/* Amount */}
                   <td className="px-4 py-4 align-top whitespace-nowrap">

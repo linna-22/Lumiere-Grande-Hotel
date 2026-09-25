@@ -260,7 +260,7 @@ export default function Employees({ onNavigate }) {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search employee..."
+                  placeholder="Search employee's name..."
                   className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
                 />
               </div>
@@ -273,7 +273,7 @@ export default function Employees({ onNavigate }) {
                 <option value="">All Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-                <option value="on_leave">On Leave</option>
+                {/* <option value="on_leave">On Leave</option> */}
               </select>
 
               <span className="text-sm text-slate-500 sm:ml-auto">
@@ -396,6 +396,9 @@ export default function Employees({ onNavigate }) {
             </div>
           </div>
 
+        </main>
+      </div>
+      
           {!loading && employees.length > 0 && (
             <Pagination
               currentPage={pagination.current_page}
@@ -404,8 +407,6 @@ export default function Employees({ onNavigate }) {
               itemLabel="employees"
             />
           )}
-        </main>
-      </div>
     </div>
   )
 }

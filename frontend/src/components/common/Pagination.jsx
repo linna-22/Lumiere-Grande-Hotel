@@ -28,7 +28,7 @@ export default function Pagination({ currentPage, meta, onPageChange, itemLabel 
   }
 
   return (
-    <div className="flex items-center justify-between mt-6 flex-wrap gap-3">
+    <div className="flex items-center justify-between mt-6 flex-wrap gap-3 p-3">
       <p className="text-sm text-slate-400">
         Page {currentPage} of {lastPage} · {meta.total} {itemLabel}
       </p>

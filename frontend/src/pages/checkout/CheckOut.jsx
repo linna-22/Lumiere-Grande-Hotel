@@ -50,6 +50,15 @@ function listFromReservations(response) {
       paid: r.payment_status === "paid",
       totalAmount: Number(r.total_amount || 0),
       paidAmount: Number(r.paid_amount || 0),
+      // Keep the payment method from the reservation/invoice so checkout
+      // can automatically use the same method and prevent changing it.
+      paymentMethod:
+        r.payment_method ||
+        r.paymentMethod ||
+        r.invoice?.payment_method ||
+        r.invoice?.paymentMethod ||
+        r.payment?.method ||
+        "cash",
       invoice: r.invoice || null,
     };
   });
@@ -95,6 +104,15 @@ export default function CheckOut({ onNavigate }) {
 
   async function selectGuest(guest) {
     setSelectedGuest(guest);
+
+    // Payment method is determined by the reservation and is read-only at checkout.
+    const method = String(guest.paymentMethod || "cash").toLowerCase();
+    setPaymentMethod(
+      method === "bakong_khqr" || method === "bakong-khqr"
+        ? "bakong_khqr"
+        : "cash",
+    );
+
     setBillingLoading(true);
     setError("");
     try {
@@ -353,22 +371,17 @@ export default function CheckOut({ onNavigate }) {
                               {money(calculated.balanceDue)}
                             </span>
                           </div>
-                          <div className="flex gap-2 pt-3">
-                            {["cash", "bakong_khqr"].map((method) => (
-                              <button
-                                key={method}
-                                onClick={() => setPaymentMethod(method)}
-                                className={`px-3 py-2 rounded-lg border text-xs ${
-                                  paymentMethod === method
-                                    ? "border-amber-400 text-amber-400"
-                                    : "border-base-border text-slate-300"
-                                }`}
-                              >
-                                {method === "bakong_khqr"
+                          <div className="pt-3">
+                            <div className="flex items-center justify-between gap-4 bg-base-800 border border-base-border rounded-lg px-3 py-2.5">
+                              <span className="text-slate-400 text-sm">
+                                Payment Method
+                              </span>
+                              <span className="text-white text-sm font-semibold">
+                                {paymentMethod === "bakong_khqr"
                                   ? "Bakong KHQR"
                                   : "Cash"}
-                              </button>
-                            ))}
+                              </span>
+                            </div>
                           </div>
                           <button
                             onClick={handleCompleteCheckout}

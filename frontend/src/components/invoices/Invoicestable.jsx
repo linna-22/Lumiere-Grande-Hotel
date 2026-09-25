@@ -11,28 +11,6 @@ const COLUMNS = [
 ];
 import { Eye, Printer } from 'lucide-react'
 
-function GuestAvatar({ guest }) {
-  const guestName = [guest?.first_name, guest?.last_name]
-    .filter(Boolean)
-    .join(' ');
-
-  if (guest?.avatar) {
-    return (
-      <img
-        src={guest.avatar}
-        alt={guestName || 'Guest'}
-        className="w-9 h-9 rounded-full object-cover shrink-0"
-      />
-    );
-  }
-
-  return (
-    <div className="w-9 h-9 rounded-full bg-base-700 border border-base-border flex items-center justify-center text-sm font-semibold text-amber-400 shrink-0">
-      {guestName?.charAt(0)?.toUpperCase() ?? '?'}
-    </div>
-  );
-}
-
 export default function InvoicesTable({
   invoices,
   loading,
@@ -103,7 +81,6 @@ export default function InvoicesTable({
 
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-3">
-                    <GuestAvatar guest={inv.guest} />
                     <div className="leading-tight min-w-0">
                       <p className="font-semibold text-white truncate">
                         {inv.guest.first_name} {inv.guest.last_name}
