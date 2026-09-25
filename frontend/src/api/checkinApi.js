@@ -44,3 +44,34 @@ export function completeCheckIn(reservationCode, roomAssignments, paymentMethod 
     }),
   })
 }
+
+
+export function generateCheckInKhqr({ reservationId, invoiceId, amount, currency = 'USD' }) {
+  return apiFetch('/payments/khqr/generate', {
+    method: 'POST',
+    body: JSON.stringify({
+      reservation_id: reservationId,
+      invoice_id: invoiceId,
+      amount: Number(Number(amount).toFixed(2)),
+      currency,
+    }),
+  })
+}
+
+export function verifyCheckInKhqr(paymentId) {
+  return apiFetch(`/payments/khqr/verify/${paymentId}`)
+}
+
+export function processCheckInCash({ reservationId, invoiceId, amountDue, cashReceived, currency = 'USD', exchange = 4000 }) {
+  return apiFetch('/paymentCash', {
+    method: 'POST',
+    body: JSON.stringify({
+      reservation_id: reservationId,
+      invoice_id: invoiceId,
+      amount_due: Number(Number(amountDue).toFixed(2)),
+      cash_received: Number(cashReceived),
+      currency,
+      exchange,
+    }),
+  })
+}

@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Camera, CheckCircle2, KeyRound, Loader2, Search, UserPlus } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowRight, Camera, CheckCircle2, KeyRound, Loader2, Search, UserPlus, Banknote, WalletCards, AlertCircle, CalendarDays } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
+import CashPayment from '../../components/reservations/CashPayment'
 import Sidebar from '../../components/layout/Sidebar'
 import TopBar from '../../components/layout/TopBar'
 import { apiFetch } from '../../api/client'
-import { searchCheckIn, createWalkIn, verifyGuest, assignRoom, completeCheckIn } from '../../api/checkinApi'
+import { searchCheckIn, createWalkIn, verifyGuest, assignRoom, completeCheckIn, generateCheckInKhqr, verifyCheckInKhqr } from '../../api/checkinApi'
 
 const STEPS = [
   { key: 'search', label: 'Search Reservation', icon: Search },
@@ -63,10 +65,22 @@ export default function CheckIn({ onNavigate }) {
   const [nationality, setNationality] = useState('')
   const [idPhoto, setIdPhoto] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [payment, setPayment] = useState(null)
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
+  const [paymentLoading, setPaymentLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const cashPaymentRef = useRef(null)
+  const [showWalkInModal, setShowWalkInModal] = useState(false)
+  const [isWalkIn, setIsWalkIn] = useState(false)
+  const [walkInIdType, setWalkInIdType] = useState('Passport')
+  const [walkInIdNumber, setWalkInIdNumber] = useState('')
+  const [walkInNationality, setWalkInNationality] = useState('')
+  const today = new Date().toISOString().split('T')[0]
+  const [walkInForm, setWalkInForm] = useState({ first_name: '', last_name: '', phone: '', email: '', check_in_date: today, check_out_date: '' })
 
   async function loadReservations(search = query) {
     setLoading(true)
@@ -107,11 +121,16 @@ export default function CheckIn({ onNavigate }) {
   }, [reservations, query])
 
   function handleSelectReservation(reservation) {
+    setIsWalkIn(false)
     setSelectedReservation(reservation)
     setIdNumber(reservation.idCard || '')
     setNationality(reservation.nationality || '')
-    setSelectedRoomId('')
+    const bookedRooms = reservation.reservationRooms || []
+    const firstBookedRoom = bookedRooms[0]?.room_id || bookedRooms[0]?.room?.id || ''
+    setSelectedRoomId(firstBookedRoom ? String(firstBookedRoom) : '')
     setStepIndex(1)
+    setPayment(null)
+    setPaymentError('')
     setError('')
   }
 
@@ -130,7 +149,9 @@ export default function CheckIn({ onNavigate }) {
         id_photo: idPhoto,
       })
       await loadRooms()
-      setStepIndex(2)
+      const bookedRooms = selectedReservation.reservationRooms || []
+      const hasBookedPhysicalRoom = bookedRooms.length > 0 && bookedRooms.every((rr) => rr.room_id || rr.room?.id)
+      setStepIndex(hasBookedPhysicalRoom ? 3 : 2)
     } catch (err) {
       setError(err.message || 'Guest verification failed.')
     } finally {
@@ -144,7 +165,10 @@ export default function CheckIn({ onNavigate }) {
     setLoading(true)
     setError('')
     try {
-      await assignRoom(selectedReservation.id, Number(selectedRoomId))
+      const response = await assignRoom(selectedReservation.id, Number(selectedRoomId))
+      const updated = mapReservation(response?.reservation || response?.data || response)
+      setSelectedReservation(updated)
+      setSelectedRoomId(String(updated.reservationRooms?.[0]?.room_id || selectedRoomId))
       setStepIndex(3)
     } catch (err) {
       setError(err.message || 'Room assignment failed.')
@@ -153,26 +177,23 @@ export default function CheckIn({ onNavigate }) {
     }
   }
 
-  async function handleCompleteCheckIn() {
-    if (!selectedReservation || !selectedRoomId) return
+  async function completeAfterCashPayment() {
+    if (!selectedReservation) return
 
-    const reservationRoom = selectedReservation.reservationRooms?.[0]
-    if (!reservationRoom?.id) {
-      setError('This reservation has no reservation room to check in.')
+    const assignments = (selectedReservation.reservationRooms || []).map((rr) => ({
+      reservation_room_id: rr.id,
+      room_id: Number(rr.room_id || rr.room?.id),
+    }))
+
+    if (!assignments.length || assignments.some((item) => !item.room_id)) {
+      setError('Please assign a room before completing check-in.')
       return
     }
 
     setLoading(true)
     setError('')
     try {
-      await completeCheckIn(
-        selectedReservation.code,
-        [{
-          reservation_room_id: reservationRoom.id,
-          room_id: Number(selectedRoomId),
-        }],
-        paymentMethod,
-      )
+      await completeCheckIn(selectedReservation.code, assignments, 'cash')
       setShowSuccessModal(true)
     } catch (err) {
       setError(err.message || 'Check-in could not be completed.')
@@ -181,41 +202,203 @@ export default function CheckIn({ onNavigate }) {
     }
   }
 
-  // async function handleWalkIn() {
-  //   const first_name = window.prompt('Guest first name')
-  //   if (!first_name) return
-  //   const last_name = window.prompt('Guest last name') || ''
-  //   const phone = window.prompt('Guest phone') || ''
-  //   if (!phone) return
+  async function handleCompleteCheckIn() {
+    if (!selectedReservation) return
 
-  //   setLoading(true)
-  //   setError('')
-  //   try {
-  //     const response = await createWalkIn({ first_name, last_name, phone })
-  //     const mapped = mapReservation(response?.reservation)
-  //     setReservations((current) => [mapped, ...current])
-  //     handleSelectReservation(mapped)
-  //   } catch (err) {
-  //     setError(err.message || 'Unable to create walk-in.')
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
+    // Cash uses the existing CashPayment component to create/process the payment.
+    // The receptionist only needs one button: Complete Check-In.
+    if (paymentMethod === 'cash' && needsPayment && !payment?.paid) {
+      const cashButton = Array.from(cashPaymentRef.current?.querySelectorAll('button') || [])
+        .find((button) => button.textContent?.trim() === 'Add reservation')
+
+      if (!cashButton) {
+        setError('Cash payment button is not available.')
+        return
+      }
+
+      cashButton.click()
+      return
+    }
+
+    const assignments = (selectedReservation.reservationRooms || []).map((rr) => ({
+      reservation_room_id: rr.id,
+      room_id: Number(rr.room_id || rr.room?.id),
+    }))
+
+    if (!assignments.length || assignments.some((item) => !item.room_id)) {
+      setError('Please assign a room before completing check-in.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    try {
+      await completeCheckIn(selectedReservation.code, assignments, paymentMethod)
+      setShowSuccessModal(true)
+    } catch (err) {
+      setError(err.message || 'Check-in could not be completed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
+  const remainingBalance = Math.max(0, Number(selectedReservation?.raw?.total_amount || 0) - Number(selectedReservation?.raw?.paid_amount || 0))
+  const invoiceId = selectedReservation?.raw?.invoice?.id || selectedReservation?.raw?.invoice_id || null
+  const needsPayment = remainingBalance > 0.009 && selectedReservation?.raw?.payment_status !== 'paid'
+
+  async function handleGenerateKhqr() {
+    if (!invoiceId) {
+      setPaymentError('Invoice is not available for this check-in.')
+      return
+    }
+    if (remainingBalance <= 0) {
+      setPaymentError('There is no remaining balance to pay.')
+      return
+    }
+    setPaymentLoading(true)
+    setPaymentError('')
+    try {
+      const data = await generateCheckInKhqr({
+        reservationId: selectedReservation.id,
+        invoiceId,
+        amount: remainingBalance,
+        currency: 'USD',
+      })
+      setPayment(data)
+      setShowQrModal(true)
+    } catch (err) {
+      setPaymentError(err.message || 'Failed to generate KHQR payment.')
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!showQrModal || !payment?.payment_id) return undefined
+    let stopped = false
+    let intervalId
+    let timeoutId
+
+    const verify = async () => {
+      try {
+        const data = await verifyCheckInKhqr(payment.payment_id)
+        if (data.paid === true) {
+          stopped = true
+          clearInterval(intervalId)
+          clearTimeout(timeoutId)
+          setShowQrModal(false)
+          setPayment({ ...payment, paid: true, status: 'completed' })
+          setPaymentMethod('bakong_khqr')
+          setPaymentError('')
+        }
+      } catch (err) {
+        if (!stopped) setPaymentError(err.message || 'Unable to verify KHQR payment.')
+      }
+    }
+
+    verify()
+    intervalId = setInterval(verify, 3000)
+    timeoutId = setTimeout(() => {
+      stopped = true
+      clearInterval(intervalId)
+      setShowQrModal(false)
+      setPaymentError('KHQR payment window expired. Please generate a new QR code.')
+    }, 5 * 60 * 1000)
+
+    return () => {
+      stopped = true
+      clearInterval(intervalId)
+      clearTimeout(timeoutId)
+    }
+  }, [showQrModal, payment?.payment_id])
+
+  function openWalkInModal() {
+    setWalkInForm({ first_name: '', last_name: '', phone: '', email: '', check_in_date: today, check_out_date: new Date(Date.now() + 86400000).toISOString().split('T')[0] })
+    setWalkInIdType('Passport')
+    setWalkInIdNumber('')
+    setWalkInNationality('')
+    setError('')
+    setShowWalkInModal(true)
+  }
+
+  async function handleWalkIn(event) {
+    event.preventDefault()
+    const { first_name, last_name, phone, email, check_in_date, check_out_date } = walkInForm
+    if (!first_name.trim() || !last_name.trim() || !phone.trim() || !check_in_date || !check_out_date) return
+    if (check_out_date <= check_in_date) {
+      setError('Check-out date must be after the check-in date.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    try {
+      const response = await createWalkIn({
+        first_name: first_name.trim(),
+        last_name: last_name.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+        check_in_date,
+        check_out_date,
+        nationality: walkInNationality.trim() || undefined,
+        id_type: walkInIdType,
+        id_number: walkInIdNumber.trim() || undefined,
+      })
+      const mapped = mapReservation(response?.reservation)
+      const walkInMapped = {
+        ...mapped,
+        firstName: first_name.trim(),
+        lastName: last_name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        nationality: walkInNationality.trim(),
+        idCard: walkInIdNumber.trim(),
+        idType: walkInIdType,
+        checkIn: check_in_date,
+        checkOut: check_out_date,
+      }
+      setReservations((current) => [walkInMapped, ...current])
+      setShowWalkInModal(false)
+      setIsWalkIn(true)
+      setSelectedReservation(walkInMapped)
+      setIdNumber(walkInIdNumber.trim())
+      setNationality(walkInNationality.trim())
+      setSelectedRoomId('')
+      setPayment(null)
+      setPaymentError('')
+      setStepIndex(2)
+    } catch (err) {
+      setError(err.message || 'Unable to create walk-in.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   function reset() {
     setShowSuccessModal(false)
     setSelectedReservation(null)
+    setIsWalkIn(false)
     setSelectedRoomId('')
     setIdNumber('')
     setNationality('')
     setIdPhoto(null)
+    setPayment(null)
+    setShowQrModal(false)
+    setPaymentError('')
     setStepIndex(0)
     loadReservations(query)
     loadRooms()
   }
 
   return (
-    <div className="flex bg-base-850 min-h-screen">
+    <>
+      <style>{`
+        .cash-payment-checkin-wrapper > div > div:last-child > button:last-child {
+          display: none;
+        }
+      `}</style>
+      <div className="flex bg-base-850 min-h-screen">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} active="Check In" onNavigate={onNavigate} />
       <div className="flex-1 min-w-0">
         <TopBar onMenuClick={() => setSidebarOpen(true)} onNavigate={onNavigate} />
@@ -225,9 +408,9 @@ export default function CheckIn({ onNavigate }) {
               <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif tracking-tight">Check In</h1>
               <p className="text-sm text-slate-400 mt-1">Process guest arrivals using the live Laravel API.</p>
             </div>
-            {/* <button onClick={handleWalkIn} className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold px-4 py-2.5 rounded-lg">
+            <button onClick={openWalkInModal} className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-base-950 font-semibold px-4 py-2.5 rounded-lg">
               <UserPlus size={16} /> Walk-in Guest
-            </button> */}
+            </button>
           </div>
 
           {error && <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 px-4 py-3 text-sm">{error}</div>}
@@ -291,23 +474,70 @@ export default function CheckIn({ onNavigate }) {
                     <div className="bg-base-800 rounded-lg p-3"><p className="text-xs text-slate-500">Booking Code</p><p className="text-white font-semibold">{selectedReservation.code}</p></div>
                     <div className="bg-base-800 rounded-lg p-3"><p className="text-xs text-slate-500">Phone</p><p className="text-white font-semibold">{selectedReservation.phone || '—'}</p></div>
                     <div className="bg-base-800 rounded-lg p-3"><p className="text-xs text-slate-500">Reserved Room</p><p className="text-white font-semibold">{selectedReservation.room}</p></div>
+                    <div className="bg-base-800 rounded-lg p-3"><p className="text-xs text-slate-500">Check-in Date</p><p className="text-white font-semibold">{selectedReservation.checkIn || '—'}</p></div>
+                    <div className="bg-base-800 rounded-lg p-3"><p className="text-xs text-slate-500">Check-out Date</p><p className="text-white font-semibold">{selectedReservation.checkOut || '—'}</p></div>
                   </div>
                 </div>
               )}
 
               {selectedReservation && stepIndex === 1 && (
                 <form onSubmit={handleVerifyAndContinue} className="bg-base-850 border border-base-border rounded-2xl p-6">
-                  <h2 className="text-white font-serif font-bold text-lg mb-4">Verify Guest Identity</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input value={selectedReservation.firstName} onChange={(e) => setSelectedReservation((r) => ({ ...r, firstName: e.target.value }))} placeholder="First name" className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" required />
-                    <input value={selectedReservation.lastName} onChange={(e) => setSelectedReservation((r) => ({ ...r, lastName: e.target.value }))} placeholder="Last name" className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" required />
-                    <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Nationality" className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
-                    <div className="flex gap-2">
-                      <select value={idType} onChange={(e) => setIdType(e.target.value)} className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white"><option>Passport</option><option>ID Card</option></select>
-                      <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder={idType === 'Passport' ? 'Passport number' : 'ID number'} className="flex-1 bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
-                    </div>
-                    {/* h u<input type="file" accept="image/*,.pdf" onChange={(e) => setIdPhoto(e.target.files?.[0] || null)} className="sm:col-span-2 text-sm text-slate-400" /> */}
-                  </div>
+                  {selectedReservation.reservationRooms?.length > 0 ? (
+                    <>
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div>
+                          <h2 className="text-white font-serif font-bold text-lg">Booked Guest Information</h2>
+                          <p className="text-sm text-slate-400 mt-1">Guest information from the existing reservation. ID number is read-only.</p>
+                        </div>
+                        <span className="text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1">Existing Booking</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">First Name</label>
+                          <input value={selectedReservation.firstName} readOnly className="w-full bg-base-800/70 border border-base-border rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">Last Name</label>
+                          <input value={selectedReservation.lastName} readOnly className="w-full bg-base-800/70 border border-base-border rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">Phone</label>
+                          <input value={selectedReservation.phone || '—'} readOnly className="w-full bg-base-800/70 border border-base-border rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+                          <input value={selectedReservation.email || '—'} readOnly className="w-full bg-base-800/70 border border-base-border rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">Nationality</label>
+                          <input value={selectedReservation.nationality || '—'} readOnly className="w-full bg-base-800/70 border border-base-border rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">ID Number</label>
+                          <input value={idNumber || 'Not provided'} readOnly className="w-full bg-base-800/70 border border-base-border rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed" />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+                        The guest details above were retrieved from the reservation. They cannot be changed during check-in.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-white font-serif font-bold text-lg mb-4">Verify Guest Identity</h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <input value={selectedReservation.firstName} onChange={(e) => setSelectedReservation((r) => ({ ...r, firstName: e.target.value }))} placeholder="First name" className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" required />
+                        <input value={selectedReservation.lastName} placeholder="Last name" onChange={(e) => setSelectedReservation((r) => ({ ...r, lastName: e.target.value }))} className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" required />
+                        <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Nationality" className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+                        <div className="flex gap-2">
+                          <select value={idType} onChange={(e) => setIdType(e.target.value)} className="bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white"><option>Passport</option><option>ID Card</option></select>
+                          <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder={idType === 'Passport' ? 'Passport number' : 'ID number'} className="flex-1 bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+                        </div>
+                        {/* h u<input type="file" accept="image/*,.pdf" onChange={(e) => setIdPhoto(e.target.files?.[0] || null)} className="sm:col-span-2 text-sm text-slate-400" /> */}
+                      </div>
+                    </>
+                  )}
                   <button disabled={loading} className="mt-5 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-base-950 font-semibold px-5 py-2.5 rounded-lg">{loading ? 'Verifying...' : 'Verify & Continue'}</button>
                 </form>
               )}
@@ -315,6 +545,7 @@ export default function CheckIn({ onNavigate }) {
               {selectedReservation && stepIndex === 2 && (
                 <div className="bg-base-850 border border-base-border rounded-2xl p-6">
                   <h2 className="text-white font-serif font-bold text-lg mb-4">Assign Available Room</h2>
+                  <p className="text-sm text-slate-400 mb-4">This guest is a walk-in, so select an available physical room.</p>
                   {roomsLoading ? <Loader2 className="animate-spin text-amber-400" /> : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {rooms.map((room) => (
@@ -331,18 +562,163 @@ export default function CheckIn({ onNavigate }) {
 
               {selectedReservation && stepIndex === 3 && (
                 <div className="bg-base-850 border border-base-border rounded-2xl p-6">
-                  <h2 className="text-white font-serif font-bold text-lg mb-4">Settle & Complete Check-In</h2>
-                  <p className="text-sm text-slate-400 mb-4">Room {rooms.find((r) => String(r.id) === String(selectedRoomId))?.room_number || selectedRoomId} will be occupied after successful check-in.</p>
-                  <div className="flex gap-3 mb-5">
-                    {['cash', 'bakong_khqr'].map((method) => <button key={method} onClick={() => setPaymentMethod(method)} className={`px-4 py-2 rounded-lg border text-sm ${paymentMethod === method ? 'border-amber-400 text-amber-400' : 'border-base-border text-slate-300'}`}>{method === 'cash' ? 'Cash' : 'Bakong KHQR'}</button>)}
-                  </div>
-                  <button onClick={handleCompleteCheckIn} disabled={loading} className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-lg">{loading ? 'Completing...' : 'Complete Check-In'}</button>
+                  <h2 className="text-white font-serif font-bold text-lg mb-2">Payment & Complete Check-In</h2>
+                  <p className="text-sm text-slate-400 mb-4">
+                    {selectedReservation.reservationRooms?.length > 0
+                      ? `Room${selectedReservation.reservationRooms.length > 1 ? 's' : ''}: ${selectedReservation.reservationRooms.map((rr) => rr.room?.room_number || rr.room_id).join(', ')}`
+                      : 'Room assigned'}
+                  </p>
+
+                  {needsPayment ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <button type="button" onClick={() => { setPaymentMethod('cash'); setPaymentError('') }} className={`rounded-xl border p-4 text-left ${paymentMethod === 'cash' ? 'border-amber-400 bg-amber-400/10' : 'border-base-border bg-base-800'}`}>
+                          <Banknote className="text-emerald-400 mb-2" size={20} />
+                          <p className="text-white font-semibold">Cash</p>
+                          <p className="text-xs text-slate-400 mt-1">Accept cash and calculate change</p>
+                        </button>
+                        <button type="button" onClick={() => { setPaymentMethod('bakong_khqr'); setPaymentError('') }} className={`rounded-xl border p-4 text-left ${paymentMethod === 'bakong_khqr' ? 'border-amber-400 bg-amber-400/10' : 'border-base-border bg-base-800'}`}>
+                          <WalletCards className="text-amber-400 mb-2" size={20} />
+                          <p className="text-white font-semibold">Bakong KHQR</p>
+                          <p className="text-xs text-slate-400 mt-1">Generate QR and verify payment</p>
+                        </button>
+                      </div>
+
+                      {paymentMethod === 'cash' && invoiceId && (
+                        <div ref={cashPaymentRef} className="cash-payment-checkin-wrapper">
+                          <CashPayment
+                            apiBaseUrl={import.meta.env.VITE_API_URL || '/api'}
+                            amountToPay={remainingBalance}
+                            reservationId={selectedReservation.id}
+                            invoiceId={invoiceId}
+                            onSuccess={(data) => {
+                              setPayment({ ...(data || {}), paid: true, status: 'completed', method: 'cash' })
+                              setPaymentError('')
+                              completeAfterCashPayment()
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {paymentMethod === 'bakong_khqr' && (
+                        <div className="rounded-xl border border-base-border bg-base-800 p-5">
+                          <p className="text-white font-semibold">Remaining balance</p>
+                          <p className="text-2xl font-bold text-amber-400 mt-1">${remainingBalance.toFixed(2)}</p>
+                          <button type="button" onClick={handleGenerateKhqr} disabled={paymentLoading || payment?.paid} className="mt-4 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-base-950 font-semibold px-5 py-2.5 rounded-lg">
+                            {payment?.paid ? 'Payment Verified' : paymentLoading ? 'Generating QR...' : 'Generate Bakong KHQR'}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 mb-4">
+                      <p className="text-emerald-300 font-semibold">Payment already settled</p>
+                      <p className="text-xs text-slate-400 mt-1">No additional payment is required before check-in.</p>
+                    </div>
+                  )}
+
+                  {paymentError && <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 px-4 py-3 text-sm flex gap-2"><AlertCircle size={16} className="mt-0.5" />{paymentError}</div>}
+
+                  <button
+                    onClick={handleCompleteCheckIn}
+                    disabled={loading || (paymentMethod === 'bakong_khqr' && needsPayment && !payment?.paid)}
+                    className="mt-5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-lg"
+                  >
+                    {loading ? 'Completing...' : 'Complete Check-In'}
+                  </button>
                 </div>
               )}
+
             </div>
           </div>
         </main>
       </div>
+
+      {showWalkInModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleWalkIn} className="bg-base-900 border border-base-border rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-white font-bold text-xl">Walk-in Guest</h2>
+                <p className="text-slate-400 text-sm mt-1">Enter the guest information before creating the walk-in reservation.</p>
+              </div>
+              <button type="button" onClick={() => setShowWalkInModal(false)} className="text-slate-400 hover:text-white text-xl">×</button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">First Name *</label>
+                <input required value={walkInForm.first_name} onChange={(e) => setWalkInForm((f) => ({ ...f, first_name: e.target.value }))} placeholder="First name" className="w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Last Name *</label>
+                <input required value={walkInForm.last_name} onChange={(e) => setWalkInForm((f) => ({ ...f, last_name: e.target.value }))} placeholder="Last name" className="w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Phone *</label>
+                <input required type="tel" value={walkInForm.phone} onChange={(e) => setWalkInForm((f) => ({ ...f, phone: e.target.value }))} placeholder="Phone number" className="w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+                <input type="email" value={walkInForm.email} onChange={(e) => setWalkInForm((f) => ({ ...f, email: e.target.value }))} placeholder="Email (optional)" className="w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+              </div>
+                          <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Nationality *</label>
+                <input required value={walkInNationality} onChange={(e) => setWalkInNationality(e.target.value)} placeholder="Nationality" className="w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">ID Type *</label>
+                <select required value={walkInIdType} onChange={(e) => setWalkInIdType(e.target.value)} className="w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white">
+                  <option value="Passport">Passport</option>
+                  <option value="National ID">National ID</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">ID Number *</label>
+                <input required value={walkInIdNumber} onChange={(e) => setWalkInIdNumber(e.target.value)} placeholder="ID / Passport number" className="w-full bg-base-800 border border-base-border rounded-lg px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Check-in Date *</label>
+                <div className="relative">
+                  <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                  <input required type="date" min={today} value={walkInForm.check_in_date} onChange={(e) => setWalkInForm((f) => ({ ...f, check_in_date: e.target.value, check_out_date: f.check_out_date && f.check_out_date > e.target.value ? f.check_out_date : '' }))} className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2.5 text-sm text-white" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Check-out Date *</label>
+                <div className="relative">
+                  <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                  <input required type="date" min={walkInForm.check_in_date ? new Date(new Date(walkInForm.check_in_date).getTime() + 86400000).toISOString().split('T')[0] : today} value={walkInForm.check_out_date} onChange={(e) => setWalkInForm((f) => ({ ...f, check_out_date: e.target.value }))} className="w-full bg-base-800 border border-base-border rounded-lg pl-9 pr-3 py-2.5 text-sm text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button type="button" onClick={() => setShowWalkInModal(false)} className="px-4 py-2.5 rounded-lg border border-base-border text-slate-300 hover:text-white">Cancel</button>
+              <button type="submit" disabled={loading} className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-base-950 font-semibold">
+                {loading ? 'Creating...' : 'Create Walk-in'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showQrModal && payment?.qr_code && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-base-900 border border-base-border rounded-2xl w-full max-w-md p-7 text-center">
+            <h2 className="text-white font-bold text-xl">Scan Bakong KHQR</h2>
+            <p className="text-slate-400 text-sm mt-2">Ask the guest to scan this QR code and complete the payment.</p>
+            <div className="bg-white rounded-2xl p-5 mx-auto mt-5 w-fit">
+              <QRCodeSVG value={payment.qr_code} size={240} includeMargin />
+            </div>
+            <p className="text-amber-400 text-lg font-bold mt-5">${remainingBalance.toFixed(2)}</p>
+            <p className="text-xs text-slate-500 mt-1">Waiting for Bakong payment confirmation...</p>
+            {paymentError && <p className="text-xs text-rose-400 mt-3">{paymentError}</p>}
+            <button type="button" onClick={() => setShowQrModal(false)} className="mt-5 w-full border border-base-border text-slate-300 hover:text-white py-2.5 rounded-lg">Close</button>
+          </div>
+        </div>
+      )}
 
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
@@ -355,5 +731,6 @@ export default function CheckIn({ onNavigate }) {
         </div>
       )}
     </div>
+    </>
   )
 }

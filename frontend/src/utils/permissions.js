@@ -66,39 +66,14 @@ export const canDeleteUser = canManageUser
  *   Front-desk/operational pages only.
  *   NO Users, Employees, Settings, etc.
  */
-export const canViewSidebarItem = (
-  role,
-  label
-) => {
+export const canViewSidebarItem = (role, label) => {
   const rank = getUserRank(role)
 
-  // ==========================================================
-  // RANK 3
   // Super Admin / Owner
-  // ==========================================================
+  if (rank >= 3) return true
 
-  if (rank >= 3) {
-    return true
-  }
-
-  // ==========================================================
-  // RANK 2
   // Admin / Manager
-  // ==========================================================
-
-  if (rank === 2) {
-    // Admin and Manager do NOT see Settings.
-    if (label === 'Settings') {
-      return false
-    }
-
-    return true
-  }
-
-  // ==========================================================
-  // RANK 1
-  // Receptionist / Housekeeper / Staff
-  // ==========================================================
+  if (rank === 2) return true
 
   const rankOneAllowed = new Set([
     'Dashboard',
