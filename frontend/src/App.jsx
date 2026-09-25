@@ -214,7 +214,6 @@ export default function App() {
 
   return (
     <>
-      <RealtimeNotifications />
       <Page
       auth={auth}
       onNavigate={handleNavigate}
